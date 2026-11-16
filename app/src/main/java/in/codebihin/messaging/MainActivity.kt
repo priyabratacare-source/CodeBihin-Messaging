@@ -76,8 +76,14 @@ class MainActivity : ComponentActivity() {
         createMessageNotificationChannel()
 
         setContent {
-            val dark = isSystemInDarkTheme()
-            val colors = if (dark) darkColorScheme(
+            val context = LocalContext.current
+            val themePrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }
+            var darkTheme by remember { mutableStateOf(themePrefs.getBoolean("dark_theme", isSystemInDarkTheme())) }
+            val updateTheme: (Boolean) -> Unit = { enabled ->
+                darkTheme = enabled
+                themePrefs.edit().putBoolean("dark_theme", enabled).apply()
+            }
+            val colors = if (darkTheme) darkColorScheme(
                 primary = Color(0xFF818CF8),
                 onPrimary = Color(0xFF171638),
                 primaryContainer = Color(0xFF30306B),
@@ -112,7 +118,7 @@ class MainActivity : ComponentActivity() {
                     large = RoundedCornerShape(22.dp),
                     extraLarge = RoundedCornerShape(28.dp)
                 )
-            ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission) }
+            ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission, darkTheme, updateTheme) }
         }
 
         // Ask after the activity UI is installed so the Android permission dialog
@@ -164,7 +170,7 @@ private val db get() = FirebaseFirestore.getInstance()
 private val auth get() = FirebaseAuth.getInstance()
 
 @Composable
-private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: () -> Unit) {
+private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: () -> Unit, darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     var remoteActionHandled by remember { mutableStateOf(false) }
 
@@ -211,14 +217,14 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: 
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (currentUser == null) AuthScreen()
-        else MessagingScreen(openExternal, requestNotifications)
+        if (currentUser == null) AuthScreen(darkTheme, onThemeChange)
+        else MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AuthScreen() {
+private fun AuthScreen(darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
     var register by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -250,9 +256,15 @@ private fun AuthScreen() {
         else -> "Strong"
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize().background(pale)
-    ) {
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+        MaterialTheme.colorScheme.background,
+        MaterialTheme.colorScheme.primary.copy(alpha = if (darkTheme) 0.12f else 0.055f),
+        MaterialTheme.colorScheme.secondary.copy(alpha = if (darkTheme) 0.08f else 0.045f)
+    )))) {
+        Box(Modifier.align(Alignment.TopEnd).padding(top = 24.dp, end = 20.dp).size(42.dp)
+            .clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+            IconButton(onClick = { onThemeChange(!darkTheme) }) { Text(if (darkTheme) "☀" else "☾", color = MaterialTheme.colorScheme.primary) }
+        }
         Column(
             modifier = Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
@@ -260,15 +272,10 @@ private fun AuthScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Surface(
-                modifier = Modifier.size(68.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = indigo,
-                shadowElevation = 12.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("‹/›", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                }
+            Box(Modifier.size(68.dp).clip(RoundedCornerShape(22.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFF4F46E5), Color(0xFF06B6D4)))),
+                contentAlignment = Alignment.Center) {
+                Text("‹/›", color = Color.White, style = MaterialTheme.typography.headlineMedium)
             }
             Spacer(Modifier.height(12.dp))
             Text(
@@ -283,7 +290,7 @@ private fun AuthScreen() {
             )
             Spacer(Modifier.height(5.dp))
             Text(
-                "Your conversations, all in one place.",
+                "End-to-end encrypted messaging",
                 style = MaterialTheme.typography.bodyMedium,
                 color = muted
             )
@@ -514,7 +521,10 @@ private fun AuthScreen() {
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth().height(54.dp),
                         shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(containerColor = indigo)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))), MaterialTheme.shapes.large)
                     ) {
                         if (busy) {
                             CircularProgressIndicator(
@@ -611,7 +621,7 @@ private fun AuthScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications: () -> Unit) {
+private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications: () -> Unit, darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
     val uid = auth.currentUser?.uid.orEmpty()
     var tab by remember { mutableStateOf("Chats") }
     var selectedChat by remember { mutableStateOf<ChatItem?>(null) }
@@ -630,6 +640,7 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
     var profileNote by remember { mutableStateOf("") }
     var profileBusy by remember { mutableStateOf(false) }
     var chatSearch by remember { mutableStateOf("") }
+    var chatFilter by remember { mutableStateOf("All") }
 
     LaunchedEffect(uid) {
         db.collection("users").document(uid).get()
@@ -701,15 +712,20 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 title = {
-                    Column {
-                        Text("CodeBihin", style = MaterialTheme.typography.titleLarge)
-                        Text("Messaging", style = MaterialTheme.typography.labelSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp))
+                            .background(Brush.linearGradient(listOf(Color(0xFF4F46E5), Color(0xFF06B6D4)))),
+                            contentAlignment = Alignment.Center) { Text("‹/›", color = Color.White, style = MaterialTheme.typography.titleMedium) }
+                        Column {
+                            Text("Codebihin", style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            Text("MESSAGING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 },
                 actions = {
@@ -749,7 +765,23 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                         singleLine = true,
                         shape = MaterialTheme.shapes.extraLarge
                     )
-                    val visibleChats = chats.filter { it.title.contains(chatSearch, ignoreCase = true) || it.lastMessage.contains(chatSearch, ignoreCase = true) }
+                    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("All", "Groups", "Private").forEach { filter ->
+                            val selected = chatFilter == filter
+                            Surface(Modifier.clickable { chatFilter = filter }, shape = CircleShape,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
+                                Text(filter, Modifier.padding(horizontal = 15.dp, vertical = 8.dp),
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    Text("Recent conversations", style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, bottom = 5.dp))
+                    val visibleChats = chats.filter {
+                        (it.title.contains(chatSearch, ignoreCase = true) || it.lastMessage.contains(chatSearch, ignoreCase = true)) &&
+                        (chatFilter == "All" || (chatFilter == "Groups" && it.isGroup) || (chatFilter == "Private" && !it.isGroup))
+                    }
                     if (visibleChats.isEmpty()) EmptyState(if (chatSearch.isBlank()) "No conversations yet" else "No matching chats", "Open People to find someone and start a conversation.")
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         items(visibleChats, key = { it.id }) { chat ->
@@ -842,11 +874,21 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                     } }
                 }
                 else -> {
-                    Text("Your account", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
-                    Text(profileName.ifBlank { auth.currentUser?.displayName ?: "CodeBihin user" }, style = MaterialTheme.typography.titleMedium)
-                    Text(auth.currentUser?.email.orEmpty(), style = MaterialTheme.typography.bodySmall)
-                    if (profilePhone.isNotBlank()) Text("Phone: $profilePhone")
-                    if (profileBio.isNotBlank()) Text(profileBio)
+                    Text("My Profile", style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 12.dp))
+                    Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
+                        Row(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF4F46E5), Color(0xFF4338CA), Color(0xFF06B6D4)))).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(62.dp).clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                                Text(profileName.trim().take(1).uppercase().ifBlank { "C" }, color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(profileName.ifBlank { auth.currentUser?.displayName ?: "CodeBihin user" }, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(auth.currentUser?.email.orEmpty(), color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.bodySmall)
+                                if (profileBio.isNotBlank()) Text(profileBio, color = Color.White, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                            }
+                        }
+                    }
+                    if (profilePhone.isNotBlank()) Text("Phone: $profilePhone", modifier = Modifier.padding(top = 10.dp))
                     Spacer(Modifier.height(10.dp))
                     OutlinedButton(onClick = { showEditProfile = true }, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Filled.Person, contentDescription = null)
@@ -858,6 +900,16 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                     Spacer(Modifier.height(18.dp))
                     val context = LocalContext.current
                     val notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = MaterialTheme.shapes.large) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Dark theme", style = MaterialTheme.typography.titleSmall)
+                                Text("Obsidian developer palette", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(checked = darkTheme, onCheckedChange = onThemeChange)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
                     Text("Notifications", style = MaterialTheme.typography.titleMedium)
                     Text(
                         if (notificationsEnabled) "Notifications are enabled. New alerts can appear in your device notification bar."
@@ -1019,12 +1071,12 @@ private fun ChannelScreen(channel: ChannelItem, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                titleContentColor = Color.White,
-                navigationIconContentColor = Color.White,
-                actionIconContentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+                navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                actionIconContentColor = MaterialTheme.colorScheme.onSurface
             ),
-            title = { Column { Text(channel.name); Text("Public channel", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.82f)) } },
+            title = { Column { Text(channel.name); Text("Public channel", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } })
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
         LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1128,7 +1180,7 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                 navigationIconContentColor = Color.White,
                 actionIconContentColor = Color.White
             ),
-            title = { Column { Text(chat.title); Text(if (chat.isGroup) "Group chat" else "Private chat", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.82f)) } },
+            title = { Column { Text(chat.title); Text(if (chat.isGroup) "Group chat" else "Private chat", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
             actions = {
                 TextButton(onClick = {
