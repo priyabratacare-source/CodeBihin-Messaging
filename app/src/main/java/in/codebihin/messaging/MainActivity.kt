@@ -55,6 +55,7 @@ private val auth get() = FirebaseAuth.getInstance()
 
 @Composable
 private fun CodeBihinRoot(openExternal: (String) -> Unit) {
+    var currentUser by remember { mutableStateOf(auth.currentUser) }
     var blocked by remember { mutableStateOf(false) }
     DisposableEffect(currentUser?.uid) {
         val uid = currentUser?.uid
@@ -69,7 +70,6 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit) {
             onDispose { registration.remove() }
         }
     }
-    var currentUser by remember { mutableStateOf(auth.currentUser) }
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { currentUser = it.currentUser }
         auth.addAuthStateListener(listener)
