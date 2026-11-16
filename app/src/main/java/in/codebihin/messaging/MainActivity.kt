@@ -539,7 +539,8 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
             .addSnapshotListener { snap, e ->
                 if (e != null) note = e.localizedMessage ?: "Could not load messages."
                 else messages = snap?.documents?.map { d ->
-                    ChatMessage(
+                    val readBy = (d.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    val parsed = ChatMessage(
                         id = d.id,
                         senderId = d.getString("senderId") ?: "",
                         senderName = d.getString("senderName") ?: "User",
@@ -547,11 +548,12 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                         attachmentUrl = d.getString("attachmentUrl") ?: "",
                         replyToText = d.getString("replyToText") ?: "",
                         edited = d.getTimestamp("editedAt") != null,
-                        readBy = (d.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                        readBy = readBy
                     )
-                    if ((d.get("senderId") ?: "") != uid && uid !in ((d.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList())) {
+                    if (parsed.senderId != uid && uid !in readBy) {
                         d.reference.update("readBy", FieldValue.arrayUnion(uid))
                     }
+                    parsed
                 } ?: emptyList()
             }
         onDispose { listener.remove() }
