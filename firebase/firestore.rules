@@ -9,7 +9,9 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == userId;
       allow create: if signedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['displayName', 'email', 'createdAt']);
+        && request.resource.data.keys().hasOnly([
+          'displayName', 'email', 'createdAt', 'fcmTokens'
+        ]);
       allow update: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys()
