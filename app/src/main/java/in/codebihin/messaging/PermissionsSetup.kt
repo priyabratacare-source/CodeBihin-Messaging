@@ -32,6 +32,7 @@ internal fun PermissionsSetupScreen(
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
     val notificationsNeeded = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
     var notificationsGranted by remember {
         mutableStateOf(
             if (notificationsNeeded) granted(Manifest.permission.POST_NOTIFICATIONS) else true
@@ -44,11 +45,6 @@ internal fun PermissionsSetupScreen(
         )
     }
 
-    // Re-check when returning from the system dialog
-    LaunchedEffect(Unit) {
-        // tick once on enter; parent can recomposes after launcher callback by keying outside
-    }
-
     fun refresh() {
         notificationsGranted =
             if (notificationsNeeded) granted(Manifest.permission.POST_NOTIFICATIONS) else true
@@ -57,7 +53,6 @@ internal fun PermissionsSetupScreen(
                 granted(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    // Allow parent to force refresh by toggling darkTheme or by recompose from activity
     SideEffect { refresh() }
 
     val navy = MaterialTheme.colorScheme.onSurface
@@ -189,33 +184,44 @@ private fun PermissionCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(Modifier = Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(emoji, style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        requiredLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (granted) Color(0xFF10B981) else MaterialTheme.colorScheme.primary
-                    )
-                }
-                if (granted) {
-                    Text("✓", color = Color(0xFF10B981), style = MaterialTheme.typography.titleLarge)
-                }
+        // Card content is already a ColumnScope — do not nest another Column with named modifier.
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    requiredLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (granted) Color(0xFF10B981) else MaterialTheme.colorScheme.primary
+                )
             }
-            Spacer(Modifier.height(10.dp))
-            Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(14.dp))
-            OutlinedButton(
-                onClick = onClick,
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(buttonLabel)
+            if (granted) {
+                Text("✓", color = Color(0xFF10B981), style = MaterialTheme.typography.titleLarge)
             }
         }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            body,
+            modifier = Modifier.padding(horizontal = 18.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Text(buttonLabel)
+        }
+        Spacer(modifier = Modifier.height(18.dp))
     }
 }
