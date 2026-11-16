@@ -23,7 +23,7 @@ service cloud.firestore {
       allow create: if isSelf(userId)
         && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'createdAt', 'fcmTokens']);
       allow update: if isSelf(userId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'email', 'fcmTokens', 'lastSeen']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'displayName', 'email', 'createdAt', 'fcmTokens', 'lastSeen']);
       allow delete: if false;
     }
 
