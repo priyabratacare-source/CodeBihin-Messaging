@@ -39,6 +39,7 @@ class CodeBihinMessagingService : FirebaseMessagingService() {
     private fun showNotification(title: String, body: String) {
         val channelId = "codebihin_messages"
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
@@ -58,6 +59,9 @@ class CodeBihinMessagingService : FirebaseMessagingService() {
 
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
