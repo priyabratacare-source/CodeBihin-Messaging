@@ -13,15 +13,18 @@ Native Android messaging app built with Kotlin, Jetpack Compose and Firebase.
 - Email/password registration and sign-in with Firebase Authentication.
 - Public profile directory (display name only; email addresses are not exposed in public profiles).
 - One-to-one conversations using Firestore.
-- Group creation and group messaging.
-- Real-time message listeners.
+- Group creation and group messaging, with creator assigned as group administrator.
+- Public channels with owner/admin publishing and a live channel feed.
+- Official announcements feed inside the app.
+- Message replies, sender edit/delete actions, and participant read receipts.
+- Real-time chat, channel and announcement listeners.
 - Hosted file / Google Drive / other HTTPS link sharing. Files are not uploaded to Firebase Storage.
-- FCM device-token registration and notification display.
-- Voice/video meeting invitation links using Jitsi Meet opened outside the app.
+- FCM device-token registration, Android notification permission prompt and notification display.
+- Existing Jitsi meeting invitation link remains the current call experience.
 
 ### Calling limitation
 
-The Call action currently creates a unique Jitsi meeting link, posts it into the conversation, and opens the meeting externally. This is not an embedded native WebRTC calling client. For production private calls, use a secured meeting provider or implement authenticated WebRTC signalling, TURN infrastructure and in-app media permissions.
+The Call action currently creates a unique Jitsi meeting link, posts it into the conversation, and opens the meeting externally. This is not an embedded native WebRTC calling client. Firestore participant-only call-signalling rules are now a foundation only; a native WebRTC media engine, incoming-call UI, TURN configuration and device testing are still required.
 
 ## GitHub Actions APK build
 
@@ -104,7 +107,9 @@ The phased product and engineering plan for WhatsApp-style messaging, groups/cha
 ## Important production work remaining
 
 - Embedded voice/video calling with authenticated WebRTC, TURN and call lifecycle handling.
-- Message delivery/read receipts, typing indicators, online status and pagination.
+- Typing indicators, online status and paginated message history.
+- Native WebRTC calling (current call button still uses external Jitsi).
+- End-to-end encryption and encrypted cloud backup (not yet implemented).
 - Message moderation/reporting and admin audit logs.
 - Stronger abuse prevention, rate limiting, account deletion and privacy policy.
 - Release signing and Play Store readiness (the Actions workflow currently builds a debug APK).
