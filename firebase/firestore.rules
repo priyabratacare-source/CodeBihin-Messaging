@@ -5,18 +5,67 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isChatMember(chatId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+    }
+
     match /users/{userId} {
-      allow read: if signedIn() && request.auth.uid == userId;
-      allow create: if signedIn()
-        && request.auth.uid == userId
+      allow read: if isSelf(userId);
+      allow create: if isSelf(userId)
         && request.resource.data.keys().hasOnly([
-          'displayName', 'email', 'createdAt', 'fcmTokens'
+          'uid', 'displayName', 'email', 'createdAt', 'fcmTokens'
         ]);
-      allow update: if signedIn()
-        && request.auth.uid == userId
+      allow update: if isSelf(userId)
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['displayName', 'email', 'fcmTokens', 'lastSeen']);
       allow delete: if false;
+    }
+
+    match /publicProfiles/{userId} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(userId)
+        && request.resource.data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'createdAt'
+        ]);
+      allow delete: if false;
+    }
+
+    match /chats/{chatId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members is list
+        && request.resource.data.members.size() >= 2
+        && request.resource.data.members.size() <= 100
+        && request.resource.data.keys().hasOnly([
+          'members', 'title', 'isGroup', 'createdBy',
+          'createdAt', 'updatedAt', 'lastMessage'
+        ]);
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lastMessage', 'updatedAt']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isChatMember(chatId);
+        allow create: if isChatMember(chatId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'senderId', 'senderName', 'text', 'attachmentUrl', 'createdAt'
+          ])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 4000
+          && request.resource.data.attachmentUrl is string
+          && (request.resource.data.attachmentUrl == ''
+            || request.resource.data.attachmentUrl.matches('https://.*'));
+        allow update, delete: if false;
+      }
     }
 
     match /{document=**} {
