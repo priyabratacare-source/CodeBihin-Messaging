@@ -64,9 +64,14 @@ import com.google.firebase.messaging.FirebaseMessaging
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
-    private val notificationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { }
+    private var permissionRefreshTick by mutableStateOf(0)
+
+    private val runtimePermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        // Bump a tick so Compose re-reads grant state after the system dialog.
+        permissionRefreshTick += 1
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -119,16 +124,20 @@ class MainActivity : ComponentActivity() {
                     large = RoundedCornerShape(22.dp),
                     extraLarge = RoundedCornerShape(28.dp)
                 )
-            ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission, darkTheme, updateTheme) }
+            ) {
+                CodeBihinRoot(
+                    openExternal = ::openExternal,
+                    requestNotifications = ::requestNotificationPermission,
+                    requestRuntimePermissions = { perms -> runtimePermissions.launch(perms) },
+                    permissionRefreshTick = permissionRefreshTick,
+                    darkTheme = darkTheme,
+                    onThemeChange = updateTheme
+                )
+            }
         }
 
-        // Ask after the activity UI is installed so the Android permission dialog
-        // is associated with the visible app launch.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        // Runtime prompts are driven from PermissionsSetupScreen after onboarding.
+        // Keep a fallback only when the user already completed setup but denied earlier.
     }
 
     private fun createMessageNotificationChannel() {
@@ -153,7 +162,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            runtimePermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
         } else if (!enabled) {
             startActivity(
                 Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -171,7 +180,14 @@ private val db get() = FirebaseFirestore.getInstance()
 private val auth get() = FirebaseAuth.getInstance()
 
 @Composable
-private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: () -> Unit, darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
+private fun CodeBihinRoot(
+    openExternal: (String) -> Unit,
+    requestNotifications: () -> Unit,
+    requestRuntimePermissions: (Array<String>) -> Unit,
+    permissionRefreshTick: Int,
+    darkTheme: Boolean,
+    onThemeChange: (Boolean) -> Unit
+) {
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     var remoteActionHandled by remember { mutableStateOf(false) }
 
@@ -220,11 +236,21 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: 
     val context = LocalContext.current
     val uiPrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }
     var onboardingDone by remember { mutableStateOf(uiPrefs.getBoolean("onboarding_done", false)) }
+    var permissionsDone by remember { mutableStateOf(uiPrefs.getBoolean("permissions_done", false)) }
 
     fun completeOnboarding() {
         onboardingDone = true
         uiPrefs.edit().putBoolean("onboarding_done", true).apply()
     }
+
+    fun completePermissions() {
+        permissionsDone = true
+        uiPrefs.edit().putBoolean("permissions_done", true).apply()
+    }
+
+    // permissionRefreshTick forces permission cards to re-read grant state
+    @Suppress("UNUSED_EXPRESSION")
+    permissionRefreshTick
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when {
@@ -233,6 +259,12 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: 
                 darkTheme = darkTheme,
                 onSkip = { completeOnboarding() },
                 onFinished = { completeOnboarding() }
+            )
+            !permissionsDone -> PermissionsSetupScreen(
+                darkTheme = darkTheme,
+                onRequestPermissions = requestRuntimePermissions,
+                onContinue = { completePermissions() },
+                onSkip = { completePermissions() }
             )
             else -> AuthScreen(darkTheme, onThemeChange)
         }
