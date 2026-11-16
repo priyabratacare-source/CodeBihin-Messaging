@@ -30,7 +30,7 @@ service cloud.firestore {
     match /publicProfiles/{userId} {
       allow read: if signedIn();
       allow create, update: if isSelf(userId)
-        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'createdAt']);
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'createdAt']);
       allow delete: if false;
     }
 
