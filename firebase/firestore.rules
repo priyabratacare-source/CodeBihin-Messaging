@@ -29,10 +29,11 @@ service cloud.firestore {
     allow read:if isAdmin() || isChatMember(chatId);
     allow create:if isChatMember(chatId)
       && request.resource.data.senderId==request.auth.uid
-      && request.resource.data.keys().hasOnly(['senderId','senderName','text','attachmentUrl','replyToId','replyToText','createdAt'])
+      && request.resource.data.keys().hasOnly(['senderId','senderName','text','attachmentUrl','replyToId','replyToText','readBy','createdAt'])
       && request.resource.data.text is string
       && request.resource.data.text.size()<=4000
       && request.resource.data.senderName is string
+      && (!('readBy' in request.resource.data) || (request.resource.data.readBy is list && request.resource.data.readBy.size()==0))
       && request.resource.data.attachmentUrl is string
       && (request.resource.data.attachmentUrl=='' || request.resource.data.attachmentUrl.matches('https://.*'))
       && (!('replyToId' in request.resource.data) || request.resource.data.replyToId is string)
@@ -42,7 +43,13 @@ service cloud.firestore {
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','editedAt'])
       && request.resource.data.text is string
       && request.resource.data.text.size()>0
-      && request.resource.data.text.size()<=4000);
+      && request.resource.data.text.size()<=4000) || (isChatMember(chatId)
+      && resource.data.senderId!=request.auth.uid
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+      && request.resource.data.readBy is list
+      && request.resource.data.readBy.hasAll(resource.data.get('readBy', []))
+      && request.resource.data.readBy.hasAny([request.auth.uid])
+      && request.resource.data.readBy.size()<=resource.data.get('readBy', []).size()+1);
     allow delete:if isAdmin() || (isChatMember(chatId) && resource.data.senderId==request.auth.uid);
    }
   }
