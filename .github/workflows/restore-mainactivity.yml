@@ -1,0 +1,25 @@
+name: Restore MainActivity
+
+on:
+  workflow_dispatch:
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore MainActivity from good commit
+        run: |
+          set -e
+          git fetch --depth=1 origin 9a1cf161d6d4fafe59a65751492872e41fac7ed6 || git fetch origin 9a1cf161d6d4fafe59a65751492872e41fac7ed6
+          git show 9a1cf161d6d4fafe59a65751492872e41fac7ed6:app/src/main/java/in/codebihin/messaging/MainActivity.kt > app/src/main/java/in/codebihin/messaging/MainActivity.kt
+          git config user.name "Priyabrata Patra"
+          git config user.email "priyabrata.care@gmail.com"
+          git add app/src/main/java/in/codebihin/messaging/MainActivity.kt
+          git commit -m "Restore MainActivity.kt after accidental overwrite" || echo "nothing to commit"
+          git push origin HEAD:main
