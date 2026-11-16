@@ -217,9 +217,25 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: 
         if (currentUser != null) registerCurrentDeviceToken()
     }
 
+    val context = LocalContext.current
+    val uiPrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }
+    var onboardingDone by remember { mutableStateOf(uiPrefs.getBoolean("onboarding_done", false)) }
+
+    fun completeOnboarding() {
+        onboardingDone = true
+        uiPrefs.edit().putBoolean("onboarding_done", true).apply()
+    }
+
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (currentUser == null) AuthScreen(darkTheme, onThemeChange)
-        else MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)
+        when {
+            currentUser != null -> MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)
+            !onboardingDone -> OnboardingScreen(
+                darkTheme = darkTheme,
+                onSkip = { completeOnboarding() },
+                onFinished = { completeOnboarding() }
+            )
+            else -> AuthScreen(darkTheme, onThemeChange)
+        }
     }
 }
 
