@@ -20,18 +20,19 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSelf(userId) || isAdmin();
-      allow create: if isSelf(userId)
-        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'createdAt', 'fcmTokens']);
-      allow update: if isSelf(userId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'displayName', 'email', 'createdAt', 'fcmTokens', 'lastSeen']);
-      allow delete: if false;
+      allow create: if isAdmin() || (isSelf(userId)
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'createdAt', 'fcmTokens']));
+      allow update: if isAdmin() || (isSelf(userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['uid', 'displayName', 'email', 'createdAt', 'fcmTokens', 'lastSeen']));
+      allow delete: if isAdmin();
     }
 
     match /publicProfiles/{userId} {
       allow read: if signedIn();
-      allow create, update: if isSelf(userId)
-        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'createdAt']);
-      allow delete: if false;
+      allow create, update: if isAdmin() || (isSelf(userId)
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'createdAt']));
+      allow delete: if isAdmin();
     }
 
     match /chats/{chatId} {
