@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clip
 import androidx.compose.foundation.verticalScroll
@@ -47,6 +48,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -73,14 +76,41 @@ class MainActivity : ComponentActivity() {
         createMessageNotificationChannel()
 
         setContent {
+            val dark = isSystemInDarkTheme()
+            val colors = if (dark) darkColorScheme(
+                primary = Color(0xFF818CF8),
+                onPrimary = Color(0xFF171638),
+                primaryContainer = Color(0xFF30306B),
+                onPrimaryContainer = Color(0xFFE0E7FF),
+                secondary = Color(0xFF67E8F9),
+                onSecondary = Color(0xFF083344),
+                background = Color(0xFF080B14),
+                surface = Color(0xFF111827),
+                onSurface = Color(0xFFF1F5F9),
+                surfaceVariant = Color(0xFF1E293B),
+                onSurfaceVariant = Color(0xFFB6C2D2),
+                outline = Color(0xFF344256)
+            ) else lightColorScheme(
+                primary = Color(0xFF4F46E5),
+                onPrimary = Color.White,
+                primaryContainer = Color(0xFFE8EAFE),
+                onPrimaryContainer = Color(0xFF25256B),
+                secondary = Color(0xFF06B6D4),
+                onSecondary = Color(0xFF003B46),
+                background = Color(0xFFF8FAFC),
+                surface = Color.White,
+                onSurface = Color(0xFF0F172A),
+                surfaceVariant = Color(0xFFF1F5F9),
+                onSurfaceVariant = Color(0xFF64748B),
+                outline = Color(0xFFCBD5E1)
+            )
             MaterialTheme(
-                colorScheme = lightColorScheme(
-                    primary = Color(0xFF0866E8), onPrimary = Color.White,
-                    primaryContainer = Color(0xFFE4EFFF), onPrimaryContainer = Color(0xFF073B87),
-                    secondary = Color(0xFF2457A6), onSecondary = Color.White,
-                    background = Color(0xFFF5F8FF), surface = Color.White,
-                    onSurface = Color(0xFF14233D), surfaceVariant = Color(0xFFEDF3FC),
-                    onSurfaceVariant = Color(0xFF52627A), outline = Color(0xFFD6E1F0)
+                colorScheme = colors,
+                shapes = Shapes(
+                    small = RoundedCornerShape(12.dp),
+                    medium = RoundedCornerShape(16.dp),
+                    large = RoundedCornerShape(22.dp),
+                    extraLarge = RoundedCornerShape(28.dp)
                 )
             ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission) }
         }
@@ -201,10 +231,10 @@ private fun AuthScreen() {
     var resetDialog by remember { mutableStateOf(false) }
     var resetEmail by remember { mutableStateOf("") }
 
-    val navy = Color(0xFF14213D)
-    val muted = Color(0xFF64748B)
-    val indigo = Color(0xFF4F46E5)
-    val pale = Color(0xFFF4F6FF)
+    val navy = MaterialTheme.colorScheme.onSurface
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val indigo = MaterialTheme.colorScheme.primary
+    val pale = MaterialTheme.colorScheme.background
     val strength = when {
         password.isEmpty() -> 0
         password.length < 6 -> 1
@@ -262,14 +292,14 @@ private fun AuthScreen() {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
             ) {
                 Column(Modifier.fillMaxWidth().padding(20.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth()
                             .clip(MaterialTheme.shapes.large)
-                            .background(Color(0xFFF0F2FA))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -280,7 +310,7 @@ private fun AuthScreen() {
                                     note = ""
                                 },
                                 shape = MaterialTheme.shapes.medium,
-                                color = if (register == isRegister) Color.White else Color.Transparent,
+                                color = if (register == isRegister) MaterialTheme.colorScheme.surface else Color.Transparent,
                                 shadowElevation = if (register == isRegister) 2.dp else 0.dp
                             ) {
                                 Box(Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
@@ -319,7 +349,7 @@ private fun AuthScreen() {
                             shape = MaterialTheme.shapes.large,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = indigo,
-                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
                             )
                         )
                         Spacer(Modifier.height(11.dp))
@@ -379,7 +409,7 @@ private fun AuthScreen() {
                                                 if (strength <= 1) Color(0xFFEF4444)
                                                 else if (strength <= 2) Color(0xFFF59E0B)
                                                 else Color(0xFF10B981)
-                                            } else Color(0xFFE2E8F0)
+                                            } else MaterialTheme.colorScheme.outline
                                         )
                                 )
                             }
@@ -672,9 +702,9 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 title = {
                     Column {
@@ -687,13 +717,14 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 }
             )
         },
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             if (tab == "Chats") FloatingActionButton(onClick = { tab = "People" }) { Text("+") }
             if (tab == "Groups") FloatingActionButton(onClick = { showGroupDialog = true }) { Text("+") }
             if (tab == "Channels") FloatingActionButton(onClick = { showChannelDialog = true }) { Text("+") }
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) {
                 listOf("Chats", "People", "Groups", "Channels", "Updates", "Profile").forEach { item ->
                     NavigationBarItem(
                         selected = tab == item,
