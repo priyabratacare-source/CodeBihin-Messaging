@@ -77,8 +77,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
+            val systemDarkTheme = isSystemInDarkTheme()
             val themePrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }
-            var darkTheme by remember { mutableStateOf(themePrefs.getBoolean("dark_theme", isSystemInDarkTheme())) }
+            var darkTheme by remember { mutableStateOf(themePrefs.getBoolean("dark_theme", systemDarkTheme)) }
             val updateTheme: (Boolean) -> Unit = { enabled ->
                 darkTheme = enabled
                 themePrefs.edit().putBoolean("dark_theme", enabled).apply()
