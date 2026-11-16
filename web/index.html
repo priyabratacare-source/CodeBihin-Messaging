@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b63d9"><title>CodeBihin Messaging · Web</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="authView" class="auth-wrap">
+  <section class="auth-card">
+    <div class="brand-mark">CB</div><p class="eyebrow">CODEBIHIN</p><h1>Messaging</h1>
+    <p class="muted">Your conversations, across Android and the web.</p>
+    <div class="auth-tabs"><button id="signInTab" class="tab active">Sign in</button><button id="registerTab" class="tab">Create account</button></div>
+    <form id="authForm">
+      <label id="nameLabel" class="hidden">Full name<input id="displayName" autocomplete="name" maxlength="60"></label>
+      <label>Email address<input id="email" type="email" autocomplete="username" required></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
+      <button class="primary wide" id="authSubmit">Sign in</button>
+    </form>
+    <button id="forgotBtn" class="text-btn">Forgot password?</button>
+    <p id="authStatus" class="status" role="status"></p>
+  </section>
+</div>
+<div id="appView" class="app hidden">
+  <aside class="sidebar">
+    <header class="side-head"><div class="brand-mark small">CB</div><div><strong>CodeBihin</strong><span>Messaging</span></div><button id="signOutBtn" class="icon-btn" title="Sign out">↪</button></header>
+    <div class="me-card"><div class="avatar" id="myAvatar">U</div><div class="me-meta"><strong id="myName">User</strong><small id="myEmail"></small></div></div>
+    <div class="side-actions"><button id="newChatBtn" class="primary">＋ New chat</button></div>
+    <div class="section-label">CONVERSATIONS</div><div id="chatList" class="chat-list"></div>
+    <div class="side-foot"><button id="profileBtn" class="secondary wide">Edit profile</button><a href="../admin/">Admin portal ↗</a></div>
+  </aside>
+  <main class="main">
+    <section id="welcomePane" class="welcome"><div class="welcome-icon">✉</div><h2>Your messages, everywhere.</h2><p>Choose a conversation or start a new chat with someone.</p></section>
+    <section id="chatPane" class="chat-pane hidden">
+      <header class="chat-head"><button id="backBtn" class="icon-btn mobile-only">←</button><div class="avatar" id="chatAvatar">C</div><div class="chat-heading"><strong id="chatTitle">Conversation</strong><small id="chatSubtitle">Private chat</small></div></header>
+      <div id="messages" class="messages"></div>
+      <form id="messageForm" class="composer"><input id="messageText" maxlength="4000" placeholder="Write a message…" autocomplete="off"><button class="primary" id="sendBtn">Send</button></form>
+      <form id="linkForm" class="link-form"><input id="attachmentLink" type="url" placeholder="Optional secure https:// file link"><button class="secondary">Share link</button></form>
+      <p id="chatStatus" class="status chat-status" role="status"></p>
+    </section>
+    <section id="peoplePane" class="people-pane hidden"><header class="pane-head"><button id="peopleBack" class="icon-btn">←</button><div><h2>Start a conversation</h2><p>Find a CodeBihin Messaging user.</p></div></header><input id="peopleSearch" class="search" placeholder="Search by name"><div id="peopleList" class="people-list"></div><p id="peopleStatus" class="status"></p></section>
+  </main>
+</div>
+<dialog id="profileDialog"><form method="dialog" id="profileForm"><h2>Your profile</h2><label>Display name<input id="profileName" maxlength="60" required></label><label>Phone number<input id="profilePhone" maxlength="24"></label><label>About you<textarea id="profileBio" maxlength="300"></textarea></label><div class="dialog-actions"><button class="secondary" value="cancel">Cancel</button><button class="primary" id="saveProfile" value="default">Save profile</button></div><p id="profileStatus" class="status"></p></form></dialog>
+<script type="module" src="./app.js"></script>
+</body></html>
