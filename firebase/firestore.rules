@@ -66,9 +66,11 @@ service cloud.firestore {
      && request.resource.data.type in ['audio','video']
      && request.resource.data.status=='ringing'
      && request.resource.data.keys().hasOnly(['chatId','callerUid','calleeUid','type','status','offerSdp','answerSdp','createdAt','updatedAt']);
-   allow update:if isAdmin() || (callParticipant() && isActiveUser()
+   allow update:if isAdmin() || (isActiveUser() && request.auth.uid==resource.data.callerUid
+     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','endedAt'])
+     && request.resource.data.status in ['ended','missed']) || (isActiveUser() && request.auth.uid==resource.data.calleeUid
      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','answerSdp','updatedAt','endedAt'])
-     && request.resource.data.status in ['ringing','accepted','rejected','ended','missed']);
+     && request.resource.data.status in ['accepted','rejected','ended']);
    allow delete:if isAdmin();
    match /callerCandidates/{candidateId}{
     allow read:if isAdmin() || (isActiveUser() && (request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.callerUid || request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.calleeUid));
