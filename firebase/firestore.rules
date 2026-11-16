@@ -9,7 +9,10 @@ service cloud.firestore {
   match /users/{uid}{
    allow read:if isAdmin() || (signedIn() && request.auth.uid==uid);
    allow create:if isAdmin() || (isActiveUser() && request.auth.uid==uid && request.resource.data.keys().hasOnly(['uid','displayName','email','createdAt','fcmTokens']));
-   allow update:if isAdmin() || (isActiveUser() && request.auth.uid==uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid','displayName','email','createdAt','fcmTokens','lastSeen']));
+   allow update:if isAdmin() || (signedIn() && request.auth.uid==uid
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid','displayName','email','createdAt','fcmTokens','lastSeen','forceLogout'])
+    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['forceLogout'])
+      || (resource.data.get('forceLogout', false)==true && request.resource.data.get('forceLogout', false)==false && resource.data.get('disabled', false)!=true)));
    allow delete:if isAdmin();
   }
   match /publicProfiles/{uid}{
