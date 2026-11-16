@@ -1,47 +1,35 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#14213d"><meta name="description" content="CodeBihin Messaging — simple, secure conversations across devices."><title>CodeBihin Messaging · Web</title>
-<link rel="stylesheet" href="./style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4F46E5" />
+  <meta name="description" content="CodeBihin Messaging — mobile UI and web client." />
+  <title>CodeBihin Messaging · Web</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0; min-height: 100vh; font-family: system-ui, sans-serif;
+      background: #0B0F19; color: #e2e8f0;
+      display: grid; place-items: center; padding: 24px;
+    }
+    .wrap { width: min(420px, 100%); }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    p { color: #94a3b8; line-height: 1.5; }
+    a {
+      display: block; margin-top: 12px; padding: 14px 16px; border-radius: 14px;
+      text-decoration: none; font-weight: 700; text-align: center;
+    }
+    .primary { background: linear-gradient(90deg, #4F46E5, #06B6D4); color: #fff; }
+    .secondary { background: #111827; color: #e2e8f0; border: 1px solid #334155; }
+  </style>
 </head>
 <body>
-<div id="authView" class="auth-wrap">
-  <section class="auth-card">
-    <div class="auth-brand"><div class="brand-mark">CB</div><div><p class="eyebrow">CODEBIHIN</p><h1>Messaging</h1></div></div>
-    <p class="muted auth-intro">Stay close to the people who matter. Your conversations, across Android and the web.</p>
-    <div class="auth-tabs"><button id="signInTab" class="tab active">Sign in</button><button id="registerTab" class="tab">Create account</button></div>
-    <form id="authForm">
-      <label id="nameLabel" class="hidden">Full name<input id="displayName" autocomplete="name" maxlength="60"></label>
-      <label>Email address<input id="email" type="email" autocomplete="username" required></label>
-      <label>Password<div class="password-wrap"><input id="password" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"><button type="button" class="password-toggle" id="togglePassword" aria-label="Show password">Show</button></div></label>
-      <label id="confirmLabel" class="hidden">Confirm password<div class="password-wrap"><input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Re-enter your password"><button type="button" class="password-toggle" id="toggleConfirm" aria-label="Show confirmation password">Show</button></div></label>
-      <button class="primary wide auth-submit" id="authSubmit">Sign in <span aria-hidden="true">→</span></button>
-    </form>
-    <button id="forgotBtn" class="text-btn">Forgot password?</button>
-    <p id="authStatus" class="status" role="status" aria-live="polite"></p><div class="auth-security"><span>✓</span> Secure sign-in powered by Firebase</div>
-  </section>
-</div>
-<div id="appView" class="app hidden">
-  <aside class="sidebar">
-    <header class="side-head"><div class="brand-mark small">CB</div><div><strong>CodeBihin</strong><span>Messaging</span></div><button id="signOutBtn" class="icon-btn" title="Sign out" aria-label="Sign out">↪</button></header>
-    <div class="me-card"><div class="avatar" id="myAvatar">U</div><div class="me-meta"><strong id="myName">User</strong><small id="myEmail"></small></div></div>
-    <div class="side-actions"><button id="newChatBtn" class="primary">＋ New chat</button></div>
-    <div class="section-label">CONVERSATIONS</div><div id="chatList" class="chat-list"></div>
-    <div class="side-foot"><button id="profileBtn" class="secondary wide">Edit profile</button><a href="../admin/">Admin portal ↗</a></div>
-  </aside>
-  <main class="main">
-    <section id="welcomePane" class="welcome"><div class="welcome-icon">✉</div><h2>Your messages, everywhere.</h2><p>Choose a conversation or start a new chat with someone.</p></section>
-    <section id="chatPane" class="chat-pane hidden">
-      <header class="chat-head"><button id="backBtn" class="icon-btn mobile-only">←</button><div class="avatar" id="chatAvatar">C</div><div class="chat-heading"><strong id="chatTitle">Conversation</strong><small id="chatSubtitle">Private chat</small></div></header>
-      <div id="messages" class="messages"></div>
-      <form id="messageForm" class="composer"><input id="messageText" maxlength="4000" placeholder="Write a message…" autocomplete="off"><button class="primary" id="sendBtn">Send</button></form>
-      <form id="linkForm" class="link-form"><input id="attachmentLink" type="url" placeholder="Optional secure https:// file link"><button class="secondary">Share link</button></form>
-      <p id="chatStatus" class="status chat-status" role="status"></p>
-    </section>
-    <section id="peoplePane" class="people-pane hidden"><header class="pane-head"><button id="peopleBack" class="icon-btn">←</button><div><h2>Start a conversation</h2><p>Find a CodeBihin Messaging user.</p></div></header><input id="peopleSearch" class="search" placeholder="Search by name"><div id="peopleList" class="people-list"></div><p id="peopleStatus" class="status"></p></section>
-  </main>
-</div>
-<dialog id="profileDialog"><form method="dialog" id="profileForm"><h2>Your profile</h2><label>Display name<input id="profileName" maxlength="60" required></label><label>Phone number<input id="profilePhone" maxlength="24"></label><label>About you<textarea id="profileBio" maxlength="300"></textarea></label><div class="dialog-actions"><button class="secondary" value="cancel">Cancel</button><button class="primary" id="saveProfile" value="default">Save profile</button></div><p id="profileStatus" class="status"></p></form></dialog>
-<script type="module" src="./app.js"></script>
-</body></html>
+  <div class="wrap">
+    <h1>CodeBihin Messaging</h1>
+    <p>Open the interactive mobile UI prototype, or the classic web client.</p>
+    <a class="primary" href="./mobile-ui-prototype.html">Mobile UI prototype</a>
+    <a class="secondary" href="./classic.html">Classic web client</a>
+  </div>
+</body>
+</html>
