@@ -45,13 +45,36 @@ if(configReady) auth.onAuthStateChanged(async user=>{
  $("login").classList.toggle("hidden",!!user);$("dashboard").classList.add("hidden");$("logout").classList.toggle("hidden",!user);
  if(!user)return;
  try{const role=await db.collection("admins").doc(user.uid).get();if(!role.exists||role.data().active!==true)throw new Error("This account is not authorized as an administrator.");
- $("dashboard").classList.remove("hidden");loadDashboard();}catch(e){$("login").classList.remove("hidden");$("loginMsg").textContent=e.message;await auth.signOut();}
+ $("dashboard").classList.remove("hidden");await loadDashboard();}catch(e){$("login").classList.remove("hidden");$("loginMsg").textContent="Admin verification failed: "+(e.message||e);await auth.signOut();}
 });
 async function loadDashboard(){
- const [u,c]=await Promise.all([db.collection("users").limit(500).get(),db.collection("chats").limit(500).get()]);
- $("userCount").textContent=u.size;$("chatCount").textContent=c.size;
- $("usersList").innerHTML=u.docs.slice(0,12).map(d=>'<div class="item"><b>'+esc(d.data().displayName||"User")+'</b><br><span class="muted">'+esc(d.data().email||d.id)+'</span></div>').join("")||"No users yet";
- $("chatsList").innerHTML=c.docs.slice(0,12).map(d=>'<div class="item"><b>'+esc(d.data().title||"Conversation")+'</b><br><span class="muted">'+((d.data().members||[]).length)+' members · '+(d.data().isGroup?"Group":"Direct")+'</span></div>').join("")||"No conversations yet";
+ const userBox=$("usersList"), chatBox=$("chatsList");
+ userBox.textContent="Loading users…"; chatBox.textContent="Loading conversations…";
+ const results=await Promise.allSettled([
+   db.collection("users").limit(500).get(),
+   db.collection("chats").limit(500).get()
+ ]);
+ const [u,c]=results;
+ if(u.status==="fulfilled"){
+   $("userCount").textContent=u.value.size;
+   userBox.innerHTML=u.value.docs.slice(0,12).map(d=>'<div class="item"><b>'+esc(d.data().displayName||"User")+'</b><br><span class="muted">'+esc(d.data().email||d.id)+'</span></div>').join("")||"No users yet";
+ }else{
+   $("userCount").textContent="—";
+   userBox.textContent="Cannot read users: "+(u.reason?.message||u.reason);
+ }
+ if(c.status==="fulfilled"){
+   $("chatCount").textContent=c.value.size;
+   chatBox.innerHTML=c.value.docs.slice(0,12).map(d=>'<div class="item"><b>'+esc(d.data().title||"Conversation")+'</b><br><span class="muted">'+((d.data().members||[]).length)+' members · '+(d.data().isGroup?"Group":"Direct")+'</span></div>').join("")||"No conversations yet";
+ }else{
+   $("chatCount").textContent="—";
+   chatBox.textContent="Cannot read chats: "+(c.reason?.message||c.reason);
+ }
+ if(u.status==="rejected"||c.status==="rejected"){
+   const help=document.createElement("p");
+   help.className="muted";
+   help.textContent="Fix: Firebase Console → Firestore Database → Rules. Publish the rules from this repository's firebase/firestore.rules file. Confirm the signed-in Authentication UID exactly matches the admins document ID and active is Boolean true. Then sign out and sign in again.";
+   $("dashboard").appendChild(help);
+ }
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 $("sendAnn").onclick=async()=>{const title=$("annTitle").value.trim(),body=$("annBody").value.trim();if(!title||!body){$("annMsg").textContent="Enter a title and message.";return;}try{await db.collection("announcements").add({title,body,createdBy:auth.currentUser.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});$("annTitle").value="";$("annBody").value="";$("annMsg").textContent="Announcement published."; }catch(e){$("annMsg").textContent=e.message}};
