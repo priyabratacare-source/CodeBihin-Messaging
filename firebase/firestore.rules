@@ -54,6 +54,37 @@ service cloud.firestore {
    }
   }
 
+
+  match /calls/{callId}{
+   function callParticipant(){return signedIn() && (request.auth.uid==resource.data.callerUid || request.auth.uid==resource.data.calleeUid);}
+   allow read:if isAdmin() || (callParticipant() && isActiveUser());
+   allow create:if isActiveUser()
+     && request.resource.data.callerUid==request.auth.uid
+     && request.resource.data.calleeUid is string
+     && request.resource.data.calleeUid in get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members
+     && request.auth.uid in get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members
+     && request.resource.data.type in ['audio','video']
+     && request.resource.data.status=='ringing'
+     && request.resource.data.keys().hasOnly(['chatId','callerUid','calleeUid','type','status','offerSdp','answerSdp','createdAt','updatedAt']);
+   allow update:if isAdmin() || (callParticipant() && isActiveUser()
+     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','answerSdp','updatedAt','endedAt'])
+     && request.resource.data.status in ['ringing','accepted','rejected','ended','missed']);
+   allow delete:if isAdmin();
+   match /callerCandidates/{candidateId}{
+    allow read:if isAdmin() || (isActiveUser() && (request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.callerUid || request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.calleeUid));
+    allow create:if isActiveUser() && request.resource.data.senderUid==request.auth.uid
+      && request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.callerUid
+      && request.resource.data.keys().hasOnly(['senderUid','candidate','sdpMid','sdpMLineIndex','createdAt']);
+    allow update,delete:if false;
+   }
+   match /calleeCandidates/{candidateId}{
+    allow read:if isAdmin() || (isActiveUser() && (request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.callerUid || request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.calleeUid));
+    allow create:if isActiveUser() && request.resource.data.senderUid==request.auth.uid
+      && request.auth.uid==get(/databases/$(database)/documents/calls/$(callId)).data.calleeUid
+      && request.resource.data.keys().hasOnly(['senderUid','candidate','sdpMid','sdpMLineIndex','createdAt']);
+    allow update,delete:if false;
+   }
+  }
   match /channels/{channelId}{
    allow read:if isAdmin() || (isActiveUser() && (resource.data.visibility=='public' || request.auth.uid in resource.data.members));
    allow create:if isActiveUser() && request.resource.data.ownerUid==request.auth.uid
