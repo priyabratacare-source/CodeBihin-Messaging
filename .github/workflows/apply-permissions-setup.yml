@@ -1,0 +1,77 @@
+name: Apply permissions setup
+
+on:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch MainActivity for multi-permission flow
+        run: |
+          set -e
+          python3 << 'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/in/codebihin/messaging/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
+
+          old_launcher = '''    private val notificationPermission = registerForActivityResult(\n        ActivityResultContracts.RequestPermission()\n    ) { }'''
+
+          new_launcher = '''    private var permissionRefreshTick by mutableStateOf(0)\n\n    private val runtimePermissions = registerForActivityResult(\n        ActivityResultContracts.RequestMultiplePermissions()\n    ) {\n        // Bump a tick so Compose re-reads grant state after the system dialog.\n        permissionRefreshTick += 1\n    }'''
+
+          if old_launcher not in text:
+              raise SystemExit('launcher block not found')
+          text = text.replace(old_launcher, new_launcher, 1)
+
+          old_call = '''            ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission, darkTheme, updateTheme) }'''
+          new_call = '''            ) {\n                CodeBihinRoot(\n                    openExternal = ::openExternal,\n                    requestNotifications = ::requestNotificationPermission,\n                    requestRuntimePermissions = { perms -> runtimePermissions.launch(perms) },\n                    permissionRefreshTick = permissionRefreshTick,\n                    darkTheme = darkTheme,\n                    onThemeChange = updateTheme\n                )\n            }'''
+          if old_call not in text:
+              raise SystemExit('CodeBihinRoot call not found')
+          text = text.replace(old_call, new_call, 1)
+
+          # Soften auto prompt on cold start: still ask notifications once if never prompted
+          old_auto = '''        // Ask after the activity UI is installed so the Android permission dialog\n        // is associated with the visible app launch.\n        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&\n            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED\n        ) {\n            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)\n        }'''
+          new_auto = '''        // Runtime prompts are driven from PermissionsSetupScreen after onboarding.\n        // Keep a fallback only when the user already completed setup but denied earlier.'''
+          if old_auto in text:
+              text = text.replace(old_auto, new_auto, 1)
+
+          old_req = '''    private fun requestNotificationPermission() {\n        val enabled = NotificationManagerCompat.from(this).areNotificationsEnabled()\n        if (Build.VERSION.SDK_INT >= 33 &&\n            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED\n        ) {\n            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)\n        } else if (!enabled) {\n            startActivity(\n                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)\n                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)\n            )\n        }\n    }'''
+          new_req = '''    private fun requestNotificationPermission() {\n        val enabled = NotificationManagerCompat.from(this).areNotificationsEnabled()\n        if (Build.VERSION.SDK_INT >= 33 &&\n            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED\n        ) {\n            runtimePermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))\n        } else if (!enabled) {\n            startActivity(\n                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)\n                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)\n            )\n        }\n    }'''
+          if old_req not in text:
+              raise SystemExit('requestNotificationPermission not found')
+          text = text.replace(old_req, new_req, 1)
+
+          old_sig = '''private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: () -> Unit, darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {'''
+          new_sig = '''private fun CodeBihinRoot(\n    openExternal: (String) -> Unit,\n    requestNotifications: () -> Unit,\n    requestRuntimePermissions: (Array<String>) -> Unit,\n    permissionRefreshTick: Int,\n    darkTheme: Boolean,\n    onThemeChange: (Boolean) -> Unit\n) {'''
+          if old_sig not in text:
+              raise SystemExit('CodeBihinRoot signature not found')
+          text = text.replace(old_sig, new_sig, 1)
+
+          old_prefs = '''    val uiPrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }\n    var onboardingDone by remember { mutableStateOf(uiPrefs.getBoolean("onboarding_done", false)) }\n\n    fun completeOnboarding() {\n        onboardingDone = true\n        uiPrefs.edit().putBoolean("onboarding_done", true).apply()\n    }'''
+          new_prefs = '''    val uiPrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }\n    var onboardingDone by remember { mutableStateOf(uiPrefs.getBoolean("onboarding_done", false)) }\n    var permissionsDone by remember { mutableStateOf(uiPrefs.getBoolean("permissions_done", false)) }\n\n    fun completeOnboarding() {\n        onboardingDone = true\n        uiPrefs.edit().putBoolean("onboarding_done", true).apply()\n    }\n\n    fun completePermissions() {\n        permissionsDone = true\n        uiPrefs.edit().putBoolean("permissions_done", true).apply()\n    }'''
+          if old_prefs not in text:
+              raise SystemExit('onboarding prefs block not found')
+          text = text.replace(old_prefs, new_prefs, 1)
+
+          old_surface = '''    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {\n        when {\n            currentUser != null -> MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)\n            !onboardingDone -> OnboardingScreen(\n                darkTheme = darkTheme,\n                onSkip = { completeOnboarding() },\n                onFinished = { completeOnboarding() }\n            )\n            else -> AuthScreen(darkTheme, onThemeChange)\n        }\n    }'''
+          new_surface = '''    // permissionRefreshTick forces permission cards to re-read grant state\n    @Suppress("UNUSED_EXPRESSION")\n    permissionRefreshTick\n\n    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {\n        when {\n            currentUser != null -> MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)\n            !onboardingDone -> OnboardingScreen(\n                darkTheme = darkTheme,\n                onSkip = { completeOnboarding() },\n                onFinished = { completeOnboarding() }\n            )\n            !permissionsDone -> PermissionsSetupScreen(\n                darkTheme = darkTheme,\n                onRequestPermissions = requestRuntimePermissions,\n                onContinue = { completePermissions() },\n                onSkip = { completePermissions() }\n            )\n            else -> AuthScreen(darkTheme, onThemeChange)\n        }\n    }'''
+          if old_surface not in text:
+              raise SystemExit('surface when-block not found')
+          text = text.replace(old_surface, new_surface, 1)
+
+          # ensure mutableStateOf import path works - already have runtime.*
+          path.write_text(text, encoding='utf-8')
+          print('patched ok')
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "Priyabrata Patra"
+          git config user.email "priyabrata.care@gmail.com"
+          git add app/src/main/java/in/codebihin/messaging/MainActivity.kt
+          git commit -m "Wire device permission setup after onboarding (notifications + location)" || echo "no changes"
+          git push origin HEAD:main
