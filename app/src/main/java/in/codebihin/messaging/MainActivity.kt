@@ -62,9 +62,12 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit) {
         if (uid == null) { onDispose { } } else {
             val registration = db.collection("users").document(uid).addSnapshotListener { snapshot, _ ->
                 val data = snapshot?.data
-                if (data?.get("disabled") == true || data?.get("forceLogout") == true) {
-                    auth.signOut()
+                if (data?.get("disabled") == true) {
                     blocked = true
+                    auth.signOut()
+                } else if (data?.get("forceLogout") == true) {
+                    db.collection("users").document(uid).update("forceLogout", false)
+                        .addOnCompleteListener { auth.signOut() }
                 }
             }
             onDispose { registration.remove() }
