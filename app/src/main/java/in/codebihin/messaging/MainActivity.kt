@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(
@@ -78,7 +79,10 @@ private fun CodeBihinApp() {
             "createdAt" to FieldValue.serverTimestamp()
         )
         db.collection("users").document(uid).set(profile)
-            .addOnSuccessListener { message = "Account ready. Welcome to CodeBihin Messaging!" }
+            .addOnSuccessListener {
+                message = "Account ready. Welcome to CodeBihin Messaging!"
+                registerCurrentDeviceToken()
+            }
             .addOnFailureListener { message = it.localizedMessage ?: "Could not save profile." }
     }
 
@@ -143,6 +147,7 @@ private fun CodeBihinApp() {
                                 saveProfile(current.uid, displayName.trim(), email)
                             } else {
                                 message = "Signed in successfully."
+                                registerCurrentDeviceToken()
                             }
                         } else {
                             message = result.exception?.localizedMessage ?: "Authentication failed."
@@ -178,6 +183,12 @@ private fun CodeBihinApp() {
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Sign out") }
         }
+    }
+}
+
+internal fun registerCurrentDeviceToken() {
+    FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+        addDeviceToken(token)
     }
 }
 
