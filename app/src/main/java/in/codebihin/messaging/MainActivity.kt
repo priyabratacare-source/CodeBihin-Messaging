@@ -334,6 +334,7 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 db.collection("chats").document(id).set(
                     mapOf(
                         "members" to members,
+                        "admins" to listOf(uid),
                         "title" to title,
                         "isGroup" to true,
                         "createdBy" to uid,
