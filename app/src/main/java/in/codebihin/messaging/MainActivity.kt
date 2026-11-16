@@ -130,6 +130,7 @@ private fun AuthScreen() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessagingScreen(openExternal: (String) -> Unit) {
     val uid = auth.currentUser?.uid.orEmpty()
@@ -336,6 +337,7 @@ private fun GroupCreateDialog(people: List<Person>, onDismiss: () -> Unit, onCre
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String) -> Unit) {
     val uid = auth.currentUser?.uid.orEmpty()
