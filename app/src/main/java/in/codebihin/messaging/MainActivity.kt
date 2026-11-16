@@ -55,6 +55,20 @@ private val auth get() = FirebaseAuth.getInstance()
 
 @Composable
 private fun CodeBihinRoot(openExternal: (String) -> Unit) {
+    var blocked by remember { mutableStateOf(false) }
+    DisposableEffect(currentUser?.uid) {
+        val uid = currentUser?.uid
+        if (uid == null) { onDispose { } } else {
+            val registration = db.collection("users").document(uid).addSnapshotListener { snapshot, _ ->
+                val data = snapshot?.data
+                if (data?.get("disabled") == true || data?.get("forceLogout") == true) {
+                    auth.signOut()
+                    blocked = true
+                }
+            }
+            onDispose { registration.remove() }
+        }
+    }
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { currentUser = it.currentUser }
@@ -62,7 +76,7 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit) {
         onDispose { auth.removeAuthStateListener(listener) }
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (currentUser == null) AuthScreen() else MessagingScreen(openExternal)
+        if (currentUser == null) { if (blocked) Text("This account has been blocked or signed out by an administrator.") else AuthScreen() } else MessagingScreen(openExternal)
     }
 }
 
