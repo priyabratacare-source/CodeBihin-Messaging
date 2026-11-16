@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CodeBihin Messaging · Admin</title>
+<style>
+:root{font-family:Inter,system-ui,Arial,sans-serif;color:#172033;background:#f4f6fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1100px;margin:auto;padding:24px}.card{background:#fff;border:1px solid #e5e9f2;border-radius:18px;padding:20px;box-shadow:0 8px 28px #1720330a}.brand{font-weight:800;font-size:22px;color:#234fbd}.muted{color:#6b7280}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:18px 0}.metric{font-size:30px;font-weight:800;margin-top:8px}input,textarea,button{font:inherit;width:100%;padding:12px;border-radius:10px;border:1px solid #d7ddeb;margin:6px 0}button{background:#2457d6;color:#fff;border:0;font-weight:700;cursor:pointer}button.secondary{background:#eef2ff;color:#2447a7}.row{display:flex;gap:12px;align-items:center}.row>*{flex:1}section{margin-top:18px}.hidden{display:none}.item{padding:12px 0;border-bottom:1px solid #edf0f5;overflow-wrap:anywhere}.tag{font-size:12px;background:#eaf0ff;color:#2447a7;padding:4px 8px;border-radius:20px}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body><main class="shell">
+<header class="row"><div><div class="brand">CodeBihin Messaging</div><div class="muted">Administration console</div></div><button id="logout" class="secondary hidden" style="max-width:130px">Sign out</button></header>
+<section id="login" class="card" style="max-width:440px;margin:40px auto">
+<h2>Administrator sign in</h2><p class="muted">Only accounts explicitly authorized in the admins collection can access this portal.</p>
+<input id="email" type="email" placeholder="Admin email"><input id="password" type="password" placeholder="Password">
+<button id="loginBtn">Sign in</button><p id="loginMsg" class="muted"></p>
+</section>
+<div id="dashboard" class="hidden">
+<div class="grid">
+<div class="card"><div class="muted">Registered users</div><div id="userCount" class="metric">—</div></div>
+<div class="card"><div class="muted">Conversations / groups</div><div id="chatCount" class="metric">—</div></div>
+<div class="card"><div class="muted">Admin access</div><div class="metric"><span class="tag">Authorized</span></div></div>
+</div>
+<section class="card"><h2>System announcement</h2><p class="muted">Creates an announcement record. With Cloud Functions deployed, it also sends push notifications.</p>
+<input id="annTitle" placeholder="Announcement title"><textarea id="annBody" rows="3" placeholder="Write announcement"></textarea><button id="sendAnn">Publish announcement</button><p id="annMsg" class="muted"></p></section>
+<section class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+<div class="card"><h2>Recent users</h2><div id="usersList" class="muted">Loading…</div></div>
+<div class="card"><h2>Recent conversations</h2><div id="chatsList" class="muted">Loading…</div></div>
+</section>
+</div>
+</main>
+<script>
+const firebaseConfig={apiKey:"AIzaSyDbIQL-CZyreEbnWeGUWR2EwX4VDAHMZkQ",authDomain:"codebihin-messaging.firebaseapp.com",projectId:"codebihin-messaging",storageBucket:"codebihin-messaging.firebasestorage.app",messagingSenderId:"849465329627",appId:"1:849465329627:android:9d2ddefc4708a9465ac9fe"};
+firebase.initializeApp(firebaseConfig);const auth=firebase.auth(),db=firebase.firestore();
+const $=id=>document.getElementById(id);let guard=false;
+$("loginBtn").onclick=async()=>{ $("loginMsg").textContent="Signing in…";try{await auth.signInWithEmailAndPassword($("email").value.trim(),$("password").value)}catch(e){$("loginMsg").textContent=e.message}};
+$("logout").onclick=()=>auth.signOut();
+auth.onAuthStateChanged(async user=>{
+ $("login").classList.toggle("hidden",!!user);$("dashboard").classList.add("hidden");$("logout").classList.toggle("hidden",!user);
+ if(!user)return;
+ try{const role=await db.collection("admins").doc(user.uid).get();if(!role.exists||role.data().active!==true)throw new Error("This account is not authorized as an administrator.");
+ $("dashboard").classList.remove("hidden");loadDashboard();}catch(e){$("login").classList.remove("hidden");$("loginMsg").textContent=e.message;await auth.signOut();}
+});
+async function loadDashboard(){
+ const [u,c]=await Promise.all([db.collection("users").limit(500).get(),db.collection("chats").limit(500).get()]);
+ $("userCount").textContent=u.size;$("chatCount").textContent=c.size;
+ $("usersList").innerHTML=u.docs.slice(0,12).map(d=>'<div class="item"><b>'+esc(d.data().displayName||"User")+'</b><br><span class="muted">'+esc(d.data().email||d.id)+'</span></div>').join("")||"No users yet";
+ $("chatsList").innerHTML=c.docs.slice(0,12).map(d=>'<div class="item"><b>'+esc(d.data().title||"Conversation")+'</b><br><span class="muted">'+((d.data().members||[]).length)+' members · '+(d.data().isGroup?"Group":"Direct")+'</span></div>').join("")||"No conversations yet";
+}
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$("sendAnn").onclick=async()=>{const title=$("annTitle").value.trim(),body=$("annBody").value.trim();if(!title||!body){$("annMsg").textContent="Enter a title and message.";return;}try{await db.collection("announcements").add({title,body,createdBy:auth.currentUser.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});$("annTitle").value="";$("annBody").value="";$("annMsg").textContent="Announcement published."; }catch(e){$("annMsg").textContent=e.message}};
+</script></body></html>
