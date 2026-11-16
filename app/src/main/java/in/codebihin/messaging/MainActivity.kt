@@ -82,30 +82,47 @@ private val auth get() = FirebaseAuth.getInstance()
 @Composable
 private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: () -> Unit) {
     var currentUser by remember { mutableStateOf(auth.currentUser) }
-    var blocked by remember { mutableStateOf(false) }
+    var remoteActionHandled by remember { mutableStateOf(false) }
+
     DisposableEffect(currentUser?.uid) {
         val uid = currentUser?.uid
-        if (uid == null) { onDispose { } } else {
-            val registration = db.collection("users").document(uid).addSnapshotListener { snapshot, _ ->
-                val data = snapshot?.data
-                if (data?.get("disabled") == true) {
-                    blocked = true
+        remoteActionHandled = false
+        if (uid == null) {
+            onDispose { }
+        } else {
+            val userRef = db.collection("users").document(uid)
+            val registration = userRef.addSnapshotListener { snapshot, error ->
+                if (error != null || remoteActionHandled) return@addSnapshotListener
+                val data = snapshot?.data ?: return@addSnapshotListener
+
+                // A block is persistent: the user may open the login screen, but cannot
+                // enter the app until an administrator unblocks the account.
+                if (data["disabled"] == true) {
+                    remoteActionHandled = true
                     auth.signOut()
-                } else if (data?.get("forceLogout") == true) {
-                    db.collection("users").document(uid).update("forceLogout", false)
-                        .addOnCompleteListener { auth.signOut() }
+                } else if (data["forceLogout"] == true) {
+                    // Clear the one-shot command before signing out. This allows the
+                    // same account to sign in again immediately after remote logout.
+                    remoteActionHandled = true
+                    userRef.update("forceLogout", false)
+                        .addOnCompleteListener {
+                            auth.signOut()
+                        }
                 }
             }
             onDispose { registration.remove() }
         }
     }
+
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { currentUser = it.currentUser }
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
     }
+
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (currentUser == null) { if (blocked) Text("This account has been blocked or signed out by an administrator.", modifier = Modifier.padding(24.dp)) else AuthScreen() } else MessagingScreen(openExternal, requestNotifications)
+        if (currentUser == null) AuthScreen()
+        else MessagingScreen(openExternal, requestNotifications)
     }
 }
 
