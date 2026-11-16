@@ -13,6 +13,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clip
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material.icons.filled.Edit
@@ -199,7 +203,6 @@ private fun AuthScreen() {
 
     val navy = Color(0xFF14233D)
     val muted = Color(0xFF64748B)
-    val validEmail = android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
 
     Box(
         modifier = Modifier.fillMaxSize().background(Color(0xFFF3F6FC))
@@ -221,7 +224,7 @@ private fun AuthScreen() {
             }
             Spacer(Modifier.height(16.dp))
             Text("CodeBihin", style = MaterialTheme.typography.headlineLarge, color = navy)
-            Text("MESSAGING", style = MaterialTheme.typography.labelMedium, color = Color(0xFF315DEB), letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
+            Text("MESSAGING", style = MaterialTheme.typography.labelMedium, color = Color(0xFF315DEB))
             Spacer(Modifier.height(7.dp))
             Text("Stay connected. Chat freely.", style = MaterialTheme.typography.bodyMedium, color = muted)
             Spacer(Modifier.height(28.dp))
