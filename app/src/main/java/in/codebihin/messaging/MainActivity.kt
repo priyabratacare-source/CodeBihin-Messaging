@@ -16,6 +16,22 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,10 +58,10 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 
-        setContent { MaterialTheme { CodeBihinRoot(::openExternal) } }
+        setContent { MaterialTheme { CodeBihinRoot(::openExternal, ::requestNotificationPermission) } }
     }
 
-    private fun openExternal(url: String) {
+    private fun requestNotificationPermission() {\n        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)\n        else startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))\n    }\n\n    private fun openExternal(url: String) {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     }
 }
@@ -54,7 +70,7 @@ private val db get() = FirebaseFirestore.getInstance()
 private val auth get() = FirebaseAuth.getInstance()
 
 @Composable
-private fun CodeBihinRoot(openExternal: (String) -> Unit) {
+private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: () -> Unit) {
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     var blocked by remember { mutableStateOf(false) }
     DisposableEffect(currentUser?.uid) {
@@ -79,7 +95,7 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit) {
         onDispose { auth.removeAuthStateListener(listener) }
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (currentUser == null) { if (blocked) Text("This account has been blocked or signed out by an administrator.") else AuthScreen() } else MessagingScreen(openExternal)
+        if (currentUser == null) { if (blocked) Text("This account has been blocked or signed out by an administrator.", modifier = Modifier.padding(24.dp)) else AuthScreen() } else MessagingScreen(openExternal, requestNotifications)
     }
 }
 
@@ -150,7 +166,7 @@ private fun AuthScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MessagingScreen(openExternal: (String) -> Unit) {
+private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications: () -> Unit) {
     val uid = auth.currentUser?.uid.orEmpty()
     var tab by remember { mutableStateOf("Chats") }
     var selectedChat by remember { mutableStateOf<ChatItem?>(null) }
@@ -223,7 +239,7 @@ private fun MessagingScreen(openExternal: (String) -> Unit) {
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
-                        icon = { Text(when (item) { "Chats" -> "◉"; "People" -> "◎"; "Groups" -> "◌"; else -> "●" }) },
+                        icon = { Icon(when (item) { "Chats" -> Icons.Filled.Chat; "People" -> Icons.Filled.People; "Groups" -> Icons.Filled.Groups; else -> Icons.Filled.Person }, contentDescription = item) },
                         label = { Text(item) }
                     )
                 }
@@ -386,7 +402,7 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Column { Text(chat.title); Text(if (chat.isGroup) "Group chat" else "Private chat", style = MaterialTheme.typography.labelSmall) } },
-            navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
             actions = {
                 TextButton(onClick = {
                     val room = "https://meet.jit.si/CodeBihin-${UUID.randomUUID()}"
@@ -455,7 +471,7 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                             }
                             .addOnFailureListener { busy = false; note = it.localizedMessage ?: "Message failed." }
                     }
-                }) { Text(if (busy) "Sending…" else "Send") }
+                }) { Icon(Icons.Filled.Send, contentDescription = "Send message"); Spacer(Modifier.width(6.dp)); Text(if (busy) "Sending…" else "Send") }
             }
         }
     }
