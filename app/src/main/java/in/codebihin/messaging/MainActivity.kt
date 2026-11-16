@@ -290,7 +290,7 @@ private fun AuthScreen(darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
             )
             Spacer(Modifier.height(5.dp))
             Text(
-                "End-to-end encrypted messaging",
+                "Private messaging, made simple",
                 style = MaterialTheme.typography.bodyMedium,
                 color = muted
             )
@@ -519,12 +519,11 @@ private fun AuthScreen(darkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
                             }
                         },
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
                         shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                    modifier = Modifier.fillMaxWidth().height(54.dp)
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))), MaterialTheme.shapes.large)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                        modifier = Modifier.fillMaxWidth().height(54.dp)
+                            .background(Brush.horizontalGradient(listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))), MaterialTheme.shapes.large)
                     ) {
                         if (busy) {
                             CircularProgressIndicator(
