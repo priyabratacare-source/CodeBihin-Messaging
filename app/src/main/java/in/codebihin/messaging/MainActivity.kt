@@ -505,7 +505,7 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                     db.collection("users").document(uid).set(profile, SetOptions.merge())
                         .addOnSuccessListener {
                             db.collection("publicProfiles").document(uid).set(
-                                mapOf("displayName" to name, "phone" to phone, "bio" to bio, "updatedAt" to FieldValue.serverTimestamp()),
+                                mapOf("displayName" to name, "bio" to bio, "updatedAt" to FieldValue.serverTimestamp()),
                                 SetOptions.merge()
                             ).addOnCompleteListener {
                                 auth.currentUser?.updateProfile(
