@@ -113,7 +113,7 @@ private fun AuthScreen() {
                                     "createdAt" to FieldValue.serverTimestamp()
                                 )
                                 db.collection("users").document(user.uid).set(profile, SetOptions.merge())
-                                db.collection("publicProfiles").document(user.uid).set(profile, SetOptions.merge())
+                                db.collection("publicProfiles").document(user.uid).set(mapOf("uid" to user.uid, "displayName" to name.trim(), "createdAt" to FieldValue.serverTimestamp()), SetOptions.merge())
                             }
                             registerCurrentDeviceToken()
                             note = "Account ready."
