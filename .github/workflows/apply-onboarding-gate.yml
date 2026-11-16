@@ -1,0 +1,35 @@
+name: Apply onboarding gate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wire OnboardingScreen into CodeBihinRoot
+        run: |
+          set -e
+          python3 << 'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/in/codebihin/messaging/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
+          old = '''    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {\n        if (currentUser == null) AuthScreen(darkTheme, onThemeChange)\n        else MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)\n    }\n}'''
+          new = '''    val context = LocalContext.current\n    val uiPrefs = remember { context.getSharedPreferences("codebihin_ui", Context.MODE_PRIVATE) }\n    var onboardingDone by remember { mutableStateOf(uiPrefs.getBoolean("onboarding_done", false)) }\n\n    fun completeOnboarding() {\n        onboardingDone = true\n        uiPrefs.edit().putBoolean("onboarding_done", true).apply()\n    }\n\n    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {\n        when {\n            currentUser != null -> MessagingScreen(openExternal, requestNotifications, darkTheme, onThemeChange)\n            !onboardingDone -> OnboardingScreen(\n                darkTheme = darkTheme,\n                onSkip = { completeOnboarding() },\n                onFinished = { completeOnboarding() }\n            )\n            else -> AuthScreen(darkTheme, onThemeChange)\n        }\n    }\n}'''
+          if old not in text:
+              raise SystemExit('target block not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          print('patched')
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "Priyabrata Patra"
+          git config user.email "priyabrata.care@gmail.com"
+          git add app/src/main/java/in/codebihin/messaging/MainActivity.kt
+          git commit -m "Show skippable first-time guide before sign-in" || echo "no changes"
+          git push origin HEAD:main
