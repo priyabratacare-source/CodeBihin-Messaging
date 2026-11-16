@@ -12,7 +12,7 @@ const firebaseConfig = {
 };
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
 const $=id=>document.getElementById(id);
-const state={register:false,user:null,chats:[],people:[],activeChat:null,chatStop:null,listStop:null,msgStop:null,profile:null};
+const state={register:false,user:null,chats:[],people:[],activeChat:null,chatStop:null,listStop:null,msgStop:null,userStop:null,logoutPending:false,profile:null};
 const show=(el,yes=true)=>$(el).classList.toggle("hidden",!yes);
 const note=(id,msg)=>$(id).textContent=msg||"";
 const safe=(v)=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -33,7 +33,7 @@ onAuthStateChanged(auth,async user=>{cleanup();state.user=user;show("authView",!
  if(state.profile.disabled===true){await signOut(auth);note("authStatus","This account is disabled. Contact an administrator.");return}
  if(snap.exists()) await updateDoc(ref,{lastSeen:serverTimestamp()}); else await setDoc(ref,{uid:user.uid,displayName:state.profile.displayName||user.displayName||"User",email:user.email||"",createdAt:serverTimestamp()});
  renderMe();startChatList();}catch(e){note("chatStatus",friendly(e))}});
-function cleanup(){state.listStop?.();state.msgStop?.();state.chatStop?.();state.listStop=state.msgStop=state.chatStop=null;state.activeChat=null}
+function cleanup(){state.listStop?.();state.msgStop?.();state.chatStop?.();state.userStop?.();state.listStop=state.msgStop=state.chatStop=state.userStop=null;state.activeChat=null;state.logoutPending=false}
 function renderMe(){const name=state.profile?.displayName||state.user?.displayName||"User";$("myName").textContent=name;$("myEmail").textContent=state.user?.email||"";$("myAvatar").textContent=initials(name)}
 function startChatList(){state.listStop=onSnapshot(query(collection(db,"chats"),where("members","array-contains",state.user.uid)),snap=>{state.chats=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));renderChats()},e=>note("chatStatus",friendly(e)))}
 function renderChats(){const root=$("chatList");root.innerHTML="";if(!state.chats.length){root.innerHTML='<p class="muted" style="padding:16px">No chats yet. Start a new conversation.</p>';return}
