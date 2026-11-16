@@ -248,6 +248,7 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
     var profileBio by remember { mutableStateOf("") }
     var profileNote by remember { mutableStateOf("") }
     var profileBusy by remember { mutableStateOf(false) }
+    var chatSearch by remember { mutableStateOf("") }
 
     LaunchedEffect(uid) {
         db.collection("users").document(uid).get()
@@ -326,8 +327,8 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 ),
                 title = {
                     Column {
-                        Text("CodeBihin Messaging")
-                        Text("Private conversations, groups and calls", style = MaterialTheme.typography.labelSmall)
+                        Text("CodeBihin", style = MaterialTheme.typography.titleLarge)
+                        Text("Messaging", style = MaterialTheme.typography.labelSmall)
                     }
                 },
                 actions = {
@@ -357,22 +358,39 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
             when (tab) {
                 "Chats" -> {
-                    Text("Your conversations", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
-                    if (chats.isEmpty()) EmptyState("No conversations yet", "Open People and start a private chat.")
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(chats, key = { it.id }) { chat ->
-                            Card(Modifier.fillMaxWidth().clickable { selectedChat = chat }) {
-                                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                                        Text(if (chat.isGroup) "G" else chat.title.take(1).uppercase(), Modifier.padding(12.dp))
+                    OutlinedTextField(
+                        value = chatSearch,
+                        onValueChange = { chatSearch = it },
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp),
+                        placeholder = { Text("Search conversations") },
+                        leadingIcon = { Icon(Icons.Filled.Chat, contentDescription = null) },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.extraLarge
+                    )
+                    val visibleChats = chats.filter { it.title.contains(chatSearch, ignoreCase = true) || it.lastMessage.contains(chatSearch, ignoreCase = true) }
+                    if (visibleChats.isEmpty()) EmptyState(if (chatSearch.isBlank()) "No conversations yet" else "No matching chats", "Open People to find someone and start a conversation.")
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        items(visibleChats, key = { it.id }) { chat ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable { selectedChat = chat },
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Row(Modifier.padding(vertical = 13.dp, horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(54.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(if (chat.isGroup) "G" else chat.title.take(1).uppercase(), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.titleLarge)
+                                        }
                                     }
-                                    Spacer(Modifier.width(12.dp))
+                                    Spacer(Modifier.width(13.dp))
                                     Column(Modifier.weight(1f)) {
-                                        Text(chat.title, style = MaterialTheme.typography.titleMedium)
-                                        Text(chat.lastMessage.ifBlank { if (chat.isGroup) "Group conversation" else "Start chatting" }, style = MaterialTheme.typography.bodySmall)
+                                        Text(chat.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                                        Spacer(Modifier.height(3.dp))
+                                        Text(chat.lastMessage.ifBlank { if (chat.isGroup) "${chat.members.size} members · Group" else "Tap to start a conversation" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                                     }
+                                    Icon(Icons.Filled.ArrowBack, contentDescription = "Open chat", tint = MaterialTheme.colorScheme.outline)
                                 }
                             }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f), modifier = Modifier.padding(start = 72.dp))
                         }
                     }
                 }
