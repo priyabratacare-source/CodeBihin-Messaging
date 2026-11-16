@@ -1,63 +1,105 @@
 # CodeBihin Messaging
 
-Native Android messaging application built with Kotlin, Jetpack Compose and Firebase.
+Native Android messaging app built with Kotlin, Jetpack Compose and Firebase.
 
-## Android app
+## Firebase project
 
-- Package: `in.codebihin.messaging`
-- Firebase project: `codebihin-messaging`
-- Android application ID: `1:849465329627:android:9d2ddefc4708a9465ac9fe`
+- Project ID: `codebihin-messaging`
+- Android package: `in.codebihin.messaging`
+- Android Firebase App ID: `1:849465329627:android:9d2ddefc4708a9465ac9fe`
 
-## Current milestone
+## Android features in this milestone
 
-- Email/password registration and sign-in
-- Firebase Authentication session persistence
-- User profile creation in Cloud Firestore
-- FCM device-token registration
-- Android notification permission request (Android 13+)
-- Firebase Messaging service for incoming push notifications
+- Email/password registration and sign-in with Firebase Authentication.
+- Public profile directory (display name only; email addresses are not exposed in public profiles).
+- One-to-one conversations using Firestore.
+- Group creation and group messaging.
+- Real-time message listeners.
+- Hosted file / Google Drive / other HTTPS link sharing. Files are not uploaded to Firebase Storage.
+- FCM device-token registration and notification display.
+- Voice/video meeting invitation links using Jitsi Meet opened outside the app.
 
-Chat conversations, calls, media sharing and the separate web admin portal are future milestones.
+### Calling limitation
 
-## Firebase setup
+The Call action currently creates a unique Jitsi meeting link, posts it into the conversation, and opens the meeting externally. This is not an embedded native WebRTC calling client. For production private calls, use a secured meeting provider or implement authenticated WebRTC signalling, TURN infrastructure and in-app media permissions.
 
-1. Open Firebase project `codebihin-messaging`.
-2. Register the Android app with package name `in.codebihin.messaging`.
-3. Download `google-services.json`.
-4. Place it at `app/google-services.json` (inside the app module).
-5. Do not rename the file.
-6. In Firebase Authentication, enable the Email/Password provider.
-7. Create the Cloud Firestore database.
-8. Publish the rules from `firebase/firestore.rules`.
-9. Build and run on a real Android device or emulator with Google Play services.
+## GitHub Actions APK build
 
-The Google Services Gradle plugin is configured in the root and app Gradle files.
+Workflow: `.github/workflows/android-apk.yml`
 
-## Build
+It builds a debug APK on pushes to `main`, pull requests, or manual dispatch. After a successful run:
 
-Open the repository in Android Studio, allow Gradle sync to finish, then run the `app` configuration.
+1. Open the repository's **Actions** tab.
+2. Open the latest **Build Android APK** run.
+3. Download the `CodeBihin-Messaging-debug` artifact.
+4. Extract it to find `app-debug.apk`.
 
-## Repository layout
+The Firebase Android config file is currently present at `app/google-services.json`. It is a client configuration, not a service-account private key. Never commit Firebase Admin service-account keys or other server secrets.
+
+## Firestore setup
+
+1. Enable Email/Password under Firebase Authentication.
+2. Create the Cloud Firestore database.
+3. Publish `firebase/firestore.rules` (or deploy with Firebase CLI).
+4. Install and test the Android APK on a real device.
+
+## Push notifications
+
+The Android app registers each signed-in device's FCM token under `users/{uid}.fcmTokens`.
+
+The `functions/` directory contains Cloud Functions that send notifications:
+- New message -> notify the other chat members.
+- New admin announcement -> notify registered users.
+
+Deploying Cloud Functions requires the Firebase project to use the **Blaze (pay-as-you-go) plan**. Usage may incur charges. Review quotas and billing before deployment.
+
+Install Firebase CLI and deploy from the repository root:
+
+```bash
+npm install -g firebase-tools
+firebase login
+cd functions
+npm install
+cd ..
+firebase deploy --only firestore:rules,functions
+```
+
+## Admin web portal
+
+Portal source: `admin/index.html`
+
+Firebase Hosting is configured to publish the `admin/` folder. Before using it:
+
+1. In Firebase Console, register a separate **Web app** in this same project.
+2. Copy the Web app's Firebase configuration.
+3. Replace the configuration in `admin/index.html`. In particular, replace `PASTE_FIREBASE_WEB_APP_ID_HERE` with the Web App ID. Use the Web app's own `appId`, not the Android App ID.
+4. Enable Email/Password Authentication.
+5. Create an admin account in Authentication.
+6. In Firestore, create `admins/{ADMIN_AUTH_UID}` with fields `active: true` and `role: "admin"`. Create this document manually as project owner; clients cannot grant themselves admin access.
+7. Deploy hosting:
+
+```bash
+firebase deploy --only hosting
+```
+
+The admin portal provides user/conversation overview and announcement publishing. Announcement push delivery works after the Cloud Functions are deployed. Admin authorization is enforced by Firestore rules, not merely by hiding the page.
+
+## Repository structure
 
 ```
-app/                  Android application module
-  src/main/           Kotlin source and Android manifest
-firebase/             Firestore security rules
-build.gradle.kts      Root Gradle plugins
-settings.gradle.kts   Gradle project settings
+app/                    Android app
+admin/                  Firebase-hosted admin portal
+firebase/firestore.rules Firestore security rules
+functions/              FCM notification Cloud Functions
+.github/workflows/      GitHub Actions APK build
+firebase.json           Firebase deployment configuration
+.firebaserc             Default Firebase project
 ```
 
-## Security notes
+## Important production work remaining
 
-- `app/google-services.json` is intentionally excluded from Git.
-- Never commit service-account JSON files, private keys or Firebase Admin SDK credentials.
-- Firebase client configuration is not an authorization boundary. Protect data with Firestore rules and use a trusted backend for privileged actions.
-- FCM tokens are device-specific and should only be used by trusted server-side notification logic.
-
-## Next milestones
-
-1. One-to-one chat using Firestore.
-2. Conversation list and unread message counts.
-3. Secure Cloud Functions for sending FCM notifications.
-4. Group chats, media sharing and call signalling.
-5. Separate web admin portal with server-enforced roles.
+- Embedded voice/video calling with authenticated WebRTC, TURN and call lifecycle handling.
+- Message delivery/read receipts, typing indicators, online status and pagination.
+- Message moderation/reporting and admin audit logs.
+- Stronger abuse prevention, rate limiting, account deletion and privacy policy.
+- Release signing and Play Store readiness (the Actions workflow currently builds a debug APK).
