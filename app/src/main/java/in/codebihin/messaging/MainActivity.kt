@@ -187,6 +187,7 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
     var showChannelDialog by remember { mutableStateOf(false) }
     var channels by remember { mutableStateOf<List<ChannelItem>>(emptyList()) }
     var selectedChannel by remember { mutableStateOf<ChannelItem?>(null) }
+    var announcements by remember { mutableStateOf<List<AnnouncementItem>>(emptyList()) }
 
     DisposableEffect(uid) {
         var chatListener: ListenerRegistration? = null
@@ -210,7 +211,12 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                     ChannelItem(d.id, d.getString("name") ?: "Channel", d.getString("description") ?: "", d.getString("ownerUid") ?: "", (d.get("admins") as? List<*>)?.filterIsInstance<String>() ?: emptyList())
                 } ?: emptyList()
             }
-        onDispose { chatListener?.remove(); channelListener.remove() }
+        val announcementListener = db.collection("announcements").orderBy("createdAt", Query.Direction.DESCENDING).limit(50)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) error = e.localizedMessage ?: "Could not load announcements."
+                else announcements = snapshot?.documents?.map { d -> AnnouncementItem(d.id, d.getString("title") ?: "CodeBihin update", d.getString("body") ?: "") } ?: emptyList()
+            }
+        onDispose { chatListener?.remove(); channelListener.remove(); announcementListener.remove() }
     }
 
     LaunchedEffect(tab) {
@@ -261,11 +267,11 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
         },
         bottomBar = {
             NavigationBar {
-                listOf("Chats", "People", "Groups", "Channels", "Profile").forEach { item ->
+                listOf("Chats", "People", "Groups", "Channels", "Updates", "Profile").forEach { item ->
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
-                        icon = { Icon(when (item) { "Chats" -> Icons.Filled.Chat; "People" -> Icons.Filled.People; "Groups" -> Icons.Filled.Groups; "Channels" -> Icons.Filled.Campaign; else -> Icons.Filled.Person }, contentDescription = item) },
+                        icon = { Icon(when (item) { "Chats" -> Icons.Filled.Chat; "People" -> Icons.Filled.People; "Groups" -> Icons.Filled.Groups; "Channels" -> Icons.Filled.Campaign; "Updates" -> Icons.Filled.Notifications; else -> Icons.Filled.Person }, contentDescription = item) },
                         label = { Text(item) }
                     )
                 }
@@ -312,6 +318,22 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                                     Text(person.name, style = MaterialTheme.typography.titleMedium)
                                     Text(person.email, style = MaterialTheme.typography.bodySmall)
                                     Text("Tap to message", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+                "Updates" -> {
+                    Text("Announcements", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
+                    if (announcements.isEmpty()) EmptyState("No announcements", "Official CodeBihin updates will appear here.")
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(announcements, key = { it.id }) { item ->
+                            Card(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(item.title, style = MaterialTheme.typography.titleMedium)
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(item.body)
+                                    Text("Official update", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -679,6 +701,7 @@ private fun EmptyState(title: String, subtitle: String) {
 
 private data class Person(val uid: String, val name: String, val email: String)
 private data class ChannelItem(val id: String, val name: String, val description: String, val ownerUid: String, val admins: List<String>)
+private data class AnnouncementItem(val id: String, val title: String, val body: String)
 private data class ChatItem(val id: String, val title: String, val lastMessage: String, val isGroup: Boolean, val members: List<String>)
 private data class ChatMessage(val id: String, val senderId: String, val senderName: String, val text: String, val attachmentUrl: String, val replyToText: String = "", val edited: Boolean = false)
 
