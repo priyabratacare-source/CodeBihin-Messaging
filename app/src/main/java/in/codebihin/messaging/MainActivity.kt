@@ -105,6 +105,7 @@ private fun AuthScreen() {
                         if (result.isSuccessful) {
                             val user = auth.currentUser
                             if (user != null && register) {
+                                user.updateProfile(com.google.firebase.auth.UserProfileChangeRequest.Builder().setDisplayName(name.trim()).build())
                                 val profile = mapOf(
                                     "uid" to user.uid,
                                     "displayName" to name.trim(),
@@ -371,8 +372,22 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
             navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             actions = {
                 TextButton(onClick = {
-                    val room = "https://meet.jit.si/CodeBihin-${chat.id}"
-                    openExternal(room)
+                    val room = "https://meet.jit.si/CodeBihin-${UUID.randomUUID()}"
+                    val callMessage = mapOf(
+                        "senderId" to uid,
+                        "senderName" to (auth.currentUser?.displayName ?: "User"),
+                        "text" to "Join the voice/video call: $room",
+                        "attachmentUrl" to room,
+                        "createdAt" to FieldValue.serverTimestamp()
+                    )
+                    db.collection("chats").document(chat.id).collection("messages").add(callMessage)
+                        .addOnSuccessListener {
+                            db.collection("chats").document(chat.id).update(
+                                mapOf("lastMessage" to "Call invitation", "updatedAt" to FieldValue.serverTimestamp())
+                            )
+                            openExternal(room)
+                        }
+                        .addOnFailureListener { note = it.localizedMessage ?: "Could not start call." }
                 }) { Text("Call") }
             }
         )
