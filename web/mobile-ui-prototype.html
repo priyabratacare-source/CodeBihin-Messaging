@@ -10,7 +10,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      font-family: system-ui, sans-serif;
       background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #060911 55%);
       color: #e2e8f0;
       display: grid;
@@ -18,7 +18,7 @@
       padding: 24px;
     }
     .card {
-      width: min(440px, 100%);
+      width: min(480px, 100%);
       background: rgba(17, 24, 39, 0.92);
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 24px;
@@ -27,8 +27,6 @@
     }
     .badge {
       display: inline-flex;
-      align-items: center;
-      gap: 6px;
       padding: 4px 10px;
       border-radius: 999px;
       background: rgba(16, 185, 129, 0.12);
@@ -39,10 +37,12 @@
       text-transform: uppercase;
     }
     h1 { margin: 14px 0 8px; font-size: 1.45rem; }
-    p { margin: 0 0 12px; color: #94a3b8; line-height: 1.5; font-size: 0.95rem; }
+    p { margin: 0 0 12px; color: #94a3b8; line-height: 1.55; font-size: 0.95rem; }
+    ol { color: #94a3b8; line-height: 1.55; font-size: 0.92rem; padding-left: 1.2rem; }
+    code { font-size: 0.8rem; color: #67e8f9; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
     a.btn {
       display: inline-flex;
-      margin-top: 8px;
       padding: 12px 16px;
       border-radius: 14px;
       background: linear-gradient(90deg, #4F46E5, #06B6D4);
@@ -51,7 +51,10 @@
       font-weight: 700;
       font-size: 0.9rem;
     }
-    code { font-size: 0.8rem; color: #67e8f9; }
+    a.btn.secondary {
+      background: #111827;
+      border: 1px solid #334155;
+    }
   </style>
 </head>
 <body>
@@ -59,15 +62,24 @@
     <span class="badge">Design target</span>
     <h1>Codebihin mobile UI prototype</h1>
     <p>
-      The full interactive HTML prototype (Auth, Chats, Status, Community, Calls,
-      Profile, conversation, live location, CBS badges) is tracked as the Compose
-      design target. See <code>docs/MOBILE_UI_PROTOTYPE.md</code>.
+      This path is the home for the full interactive prototype (Auth, Chats, Status,
+      Community, Calls, Profile, conversation, live location, CBS badges).
     </p>
     <p>
-      Drop the complete single-file prototype at this path to replace this page,
-      or open the local prototype file from the design handoff attachment.
+      The complete single-file HTML is large (~235&nbsp;KB). Replace this page by
+      uploading <code>mobile-ui-prototype.html</code> via the GitHub web UI
+      (Add file → Upload files) into <code>web/</code>, or:
     </p>
-    <a class="btn" href="../docs/MOBILE_UI_PROTOTYPE.md">Open prototype notes</a>
+    <ol>
+      <li>Download the full prototype from the design handoff.</li>
+      <li>Save as <code>web/mobile-ui-prototype.html</code>.</li>
+      <li>Commit and push to <code>main</code>.</li>
+    </ol>
+    <p>See <code>docs/MOBILE_UI_PROTOTYPE.md</code> for screen coverage and demo auth notes.</p>
+    <div class="row">
+      <a class="btn" href="./index.html">Web hub</a>
+      <a class="btn secondary" href="./classic.html">Classic web client</a>
+    </div>
   </div>
 </body>
 </html>
