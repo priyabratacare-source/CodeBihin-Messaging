@@ -96,6 +96,11 @@ firebase.json           Firebase deployment configuration
 .firebaserc             Default Firebase project
 ```
 
+
+## Product roadmap
+
+The phased product and engineering plan for WhatsApp-style messaging, groups/channels, native WebRTC calls, push notifications, end-to-end encryption, encrypted cloud backup and advanced administration is documented in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). These are planned milestones; consult the current feature list and Actions build before treating a feature as shipped.
+
 ## Important production work remaining
 
 - Embedded voice/video calling with authenticated WebRTC, TURN and call lifecycle handling.
