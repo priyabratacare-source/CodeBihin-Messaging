@@ -2,6 +2,9 @@ package `in`.codebihin.messaging
 
 import android.Manifest
 import android.content.Intent
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -60,9 +63,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        // Create the notification channel during normal app startup. Creating it
+        // only inside FirebaseMessagingService means Android may show no channel
+        // under App info until the first FCM message starts that service.
+        createMessageNotificationChannel()
 
         setContent {
             MaterialTheme(
@@ -75,6 +79,31 @@ class MainActivity : ComponentActivity() {
                     onSurfaceVariant = Color(0xFF52627A), outline = Color(0xFFD6E1F0)
                 )
             ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission) }
+        }
+
+        // Ask after the activity UI is installed so the Android permission dialog
+        // is associated with the visible app launch.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun createMessageNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "codebihin_messages",
+                "Chat messages",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "New messages, group chats and CodeBihin updates"
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+            }
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
         }
     }
 
@@ -139,6 +168,12 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: 
         val listener = FirebaseAuth.AuthStateListener { currentUser = it.currentUser }
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
+    }
+
+    // Refresh/register this installation's FCM token whenever a signed-in
+    // session becomes available, including after an app update.
+    LaunchedEffect(currentUser?.uid) {
+        if (currentUser != null) registerCurrentDeviceToken()
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
