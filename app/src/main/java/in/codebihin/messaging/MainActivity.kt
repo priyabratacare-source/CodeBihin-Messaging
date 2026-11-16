@@ -546,8 +546,12 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                         text = d.getString("text") ?: "",
                         attachmentUrl = d.getString("attachmentUrl") ?: "",
                         replyToText = d.getString("replyToText") ?: "",
-                        edited = d.getTimestamp("editedAt") != null
+                        edited = d.getTimestamp("editedAt") != null,
+                        readBy = (d.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                     )
+                    if ((d.get("senderId") ?: "") != uid && uid !in ((d.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList())) {
+                        d.reference.update("readBy", FieldValue.arrayUnion(uid))
+                    }
                 } ?: emptyList()
             }
         onDispose { listener.remove() }
@@ -592,6 +596,7 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                             if (msg.replyToText.isNotBlank()) Text("↪ " + msg.replyToText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             if (msg.text.isNotBlank()) Text(msg.text)
                             if (msg.edited) Text("edited", style = MaterialTheme.typography.labelSmall)
+                            if (mine) Text(if (msg.readBy.any { it != uid && it in chat.members }) "Seen" else "Sent", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             if (msg.attachmentUrl.isNotBlank()) TextButton(onClick = { openExternal(msg.attachmentUrl) }) { Text("Open shared link ↗") }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 TextButton(onClick = { replyTarget = msg }) { Icon(Icons.Filled.Reply, contentDescription = "Reply"); Text("Reply") }
@@ -636,6 +641,7 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                             "attachmentUrl" to attachment,
                             "replyToId" to (replyTarget?.id ?: ""),
                             "replyToText" to (replyTarget?.text?.take(300) ?: ""),
+                            "readBy" to emptyList<String>(),
                             "createdAt" to FieldValue.serverTimestamp()
                         )
                         db.collection("chats").document(chat.id).collection("messages").add(payload)
@@ -703,7 +709,7 @@ private data class Person(val uid: String, val name: String, val email: String)
 private data class ChannelItem(val id: String, val name: String, val description: String, val ownerUid: String, val admins: List<String>)
 private data class AnnouncementItem(val id: String, val title: String, val body: String)
 private data class ChatItem(val id: String, val title: String, val lastMessage: String, val isGroup: Boolean, val members: List<String>)
-private data class ChatMessage(val id: String, val senderId: String, val senderName: String, val text: String, val attachmentUrl: String, val replyToText: String = "", val edited: Boolean = false)
+private data class ChatMessage(val id: String, val senderId: String, val senderName: String, val text: String, val attachmentUrl: String, val replyToText: String = "", val edited: Boolean = false, val readBy: List<String> = emptyList())
 
 internal fun registerCurrentDeviceToken() {
     FirebaseMessaging.getInstance().token.addOnSuccessListener { token -> addDeviceToken(token) }
