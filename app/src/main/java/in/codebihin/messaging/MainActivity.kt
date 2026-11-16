@@ -242,6 +242,21 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
     var channels by remember { mutableStateOf<List<ChannelItem>>(emptyList()) }
     var selectedChannel by remember { mutableStateOf<ChannelItem?>(null) }
     var announcements by remember { mutableStateOf<List<AnnouncementItem>>(emptyList()) }
+    var showEditProfile by remember { mutableStateOf(false) }
+    var profileName by remember { mutableStateOf(auth.currentUser?.displayName.orEmpty()) }
+    var profilePhone by remember { mutableStateOf("") }
+    var profileBio by remember { mutableStateOf("") }
+    var profileNote by remember { mutableStateOf("") }
+    var profileBusy by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uid) {
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                profileName = doc.getString("displayName") ?: auth.currentUser?.displayName.orEmpty()
+                profilePhone = doc.getString("phone") ?: ""
+                profileBio = doc.getString("bio") ?: ""
+            }
+    }
 
     DisposableEffect(uid) {
         var chatListener: ListenerRegistration? = null
@@ -428,8 +443,17 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 }
                 else -> {
                     Text("Your account", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
-                    Text(auth.currentUser?.displayName ?: auth.currentUser?.email.orEmpty())
-                    Text("User ID: $uid", style = MaterialTheme.typography.bodySmall)
+                    Text(profileName.ifBlank { auth.currentUser?.displayName ?: "CodeBihin user" }, style = MaterialTheme.typography.titleMedium)
+                    Text(auth.currentUser?.email.orEmpty(), style = MaterialTheme.typography.bodySmall)
+                    if (profilePhone.isNotBlank()) Text("Phone: $profilePhone")
+                    if (profileBio.isNotBlank()) Text(profileBio)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(onClick = { showEditProfile = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Person, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Edit profile")
+                    }
+                    if (profileNote.isNotBlank()) Text(profileNote, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(18.dp))
                     Spacer(Modifier.height(18.dp))
                     val context = LocalContext.current
@@ -452,6 +476,59 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 }
             }
         }
+    }
+
+    if (showEditProfile) {
+        AlertDialog(
+            onDismissRequest = { if (!profileBusy) showEditProfile = false },
+            title = { Text("Edit your profile") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(profileName, { profileName = it }, label = { Text("Display name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(profilePhone, { profilePhone = it }, label = { Text("Phone number") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(profileBio, { profileBio = it }, label = { Text("About you") }, maxLines = 3, modifier = Modifier.fillMaxWidth())
+                    Text("Your email address is managed by your sign-in account.", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !profileBusy && profileName.isNotBlank(), onClick = {
+                    profileBusy = true
+                    val name = profileName.trim()
+                    val phone = profilePhone.trim()
+                    val bio = profileBio.trim()
+                    val profile = mapOf(
+                        "displayName" to name,
+                        "phone" to phone,
+                        "bio" to bio,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                    db.collection("users").document(uid).set(profile, SetOptions.merge())
+                        .addOnSuccessListener {
+                            db.collection("publicProfiles").document(uid).set(
+                                mapOf("displayName" to name, "phone" to phone, "bio" to bio, "updatedAt" to FieldValue.serverTimestamp()),
+                                SetOptions.merge()
+                            ).addOnCompleteListener {
+                                auth.currentUser?.updateProfile(
+                                    com.google.firebase.auth.UserProfileChangeRequest.Builder().setDisplayName(name).build()
+                                )?.addOnCompleteListener {
+                                    profileBusy = false
+                                    profileNote = "Profile updated."
+                                    showEditProfile = false
+                                } ?: run {
+                                    profileBusy = false
+                                    profileNote = "Profile saved."
+                                    showEditProfile = false
+                                }
+                            }
+                        }
+                        .addOnFailureListener {
+                            profileBusy = false
+                            profileNote = it.localizedMessage ?: "Could not update profile."
+                        }
+                }) { Text(if (profileBusy) "Saving…" else "Save changes") }
+            },
+            dismissButton = { TextButton(enabled = !profileBusy, onClick = { showEditProfile = false }) { Text("Cancel") } }
+        )
     }
 
     if (showChannelDialog) {
