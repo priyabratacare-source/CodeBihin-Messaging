@@ -1,30 +1,63 @@
 # CodeBihin Messaging
 
-A Firebase-based Android messaging application with a separate web administration portal.
+Native Android messaging application built with Kotlin, Jetpack Compose and Firebase.
 
-## Planned modules
+## Android app
 
-- Android registration and login with persistent Firebase Authentication sessions
-- User approval and account status management
-- One-to-one messaging and push notifications
-- Voice and video calling (WebRTC)
-- Separate web-based administrator portal
-- Server-side administrative actions using Firebase Cloud Functions
-- Firestore security rules
+- Package: `in.codebihin.messaging`
+- Firebase project: `codebihin-messaging`
+- Android application ID: `1:849465329627:android:9d2ddefc4708a9465ac9fe`
 
-## Project structure
+## Current milestone
+
+- Email/password registration and sign-in
+- Firebase Authentication session persistence
+- User profile creation in Cloud Firestore
+- FCM device-token registration
+- Android notification permission request (Android 13+)
+- Firebase Messaging service for incoming push notifications
+
+Chat conversations, calls, media sharing and the separate web admin portal are future milestones.
+
+## Firebase setup
+
+1. Open Firebase project `codebihin-messaging`.
+2. Register the Android app with package name `in.codebihin.messaging`.
+3. Download `google-services.json`.
+4. Place it at `app/google-services.json` (inside the app module).
+5. Do not rename the file.
+6. In Firebase Authentication, enable the Email/Password provider.
+7. Create the Cloud Firestore database.
+8. Publish the rules from `firebase/firestore.rules`.
+9. Build and run on a real Android device or emulator with Google Play services.
+
+The Google Services Gradle plugin is configured in the root and app Gradle files.
+
+## Build
+
+Open the repository in Android Studio, allow Gradle sync to finish, then run the `app` configuration.
+
+## Repository layout
 
 ```
-android-app/   Android application
-admin-panel/   Separate web administrator portal
-functions/     Trusted server-side Firebase functions
-firebase/      Firebase configuration and security rules
+app/                  Android application module
+  src/main/           Kotlin source and Android manifest
+firebase/             Firestore security rules
+build.gradle.kts      Root Gradle plugins
+settings.gradle.kts   Gradle project settings
 ```
 
-## Security
+## Security notes
 
-Administrative privileges must be enforced server-side with Firebase Authentication custom claims. Never store plaintext passwords or expose Firebase Admin SDK credentials in the Android app or browser. Firestore rules must deny access by default and grant only the minimum required access.
+- `app/google-services.json` is intentionally excluded from Git.
+- Never commit service-account JSON files, private keys or Firebase Admin SDK credentials.
+- Firebase client configuration is not an authorization boundary. Protect data with Firestore rules and use a trusted backend for privileged actions.
+- FCM tokens are device-specific and should only be used by trusted server-side notification logic.
 
-## Setup status
+## Next milestones
 
-Initial repository documentation. Firebase project configuration and application modules still need to be added.
+1. One-to-one chat using Firestore.
+2. Conversation list and unread message counts.
+3. Secure Cloud Functions for sending FCM notifications.
+4. Group chats, media sharing and call signalling.
+5. Separate web admin portal with server-enforced roles.
