@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
@@ -38,17 +39,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= 33 &&
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-
         setContent {
             MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    CodeBihinApp()
-                }
+                Surface(modifier = Modifier.fillMaxSize()) { CodeBihinApp() }
             }
         }
     }
@@ -57,7 +55,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun CodeBihinApp() {
     val auth = remember { FirebaseAuth.getInstance() }
-    val db = remember { FirebaseFirestore.getInstance() }
     var user by remember { mutableStateOf(auth.currentUser) }
     var displayName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -72,25 +69,8 @@ private fun CodeBihinApp() {
         onDispose { auth.removeAuthStateListener(listener) }
     }
 
-    fun saveProfile(uid: String, name: String, userEmail: String) {
-        val profile = hashMapOf(
-            "displayName" to name,
-            "email" to userEmail,
-            "createdAt" to FieldValue.serverTimestamp()
-        )
-        db.collection("users").document(uid).set(profile)
-            .addOnSuccessListener {
-                message = "Account ready. Welcome to CodeBihin Messaging!"
-                registerCurrentDeviceToken()
-            }
-            .addOnFailureListener { message = it.localizedMessage ?: "Could not save profile." }
-    }
-
     if (user == null) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
+        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
             Text("CodeBihin Messaging", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
             Text(if (isRegister) "Create your account" else "Sign in to continue")
@@ -98,103 +78,98 @@ private fun CodeBihinApp() {
 
             if (isRegister) {
                 OutlinedTextField(
-                    value = displayName,
-                    onValueChange = { displayName = it },
-                    label = { Text("Your name") },
-                    singleLine = true,
+                    value = displayName, onValueChange = { displayName = it },
+                    label = { Text("Your name") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(12.dp))
             }
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it.trim() },
+                value = email, onValueChange = { email = it.trim() },
                 label = { Text("Email address") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
+                value = password, onValueChange = { password = it },
+                label = { Text("Password (minimum 6 characters)") },
                 visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(18.dp))
             Button(
                 onClick = {
-                    if (email.isBlank() || password.length < 6 ||
-                        (isRegister && displayName.isBlank())
-                    ) {
+                    if (email.isBlank() || password.length < 6 || (isRegister && displayName.isBlank())) {
                         message = "Enter valid details. Password must be at least 6 characters."
                         return@Button
                     }
                     busy = true
                     message = ""
-                    val task = if (isRegister) {
-                        auth.createUserWithEmailAndPassword(email, password)
-                    } else {
-                        auth.signInWithEmailAndPassword(email, password)
-                    }
+                    val task = if (isRegister) auth.createUserWithEmailAndPassword(email, password)
+                               else auth.signInWithEmailAndPassword(email, password)
                     task.addOnCompleteListener { result ->
                         busy = false
                         if (result.isSuccessful) {
                             val current = auth.currentUser
-                            if (isRegister && current != null) {
-                                saveProfile(current.uid, displayName.trim(), email)
+                            if (current != null && isRegister) {
+                                saveUserProfile(current.uid, displayName.trim(), current.email ?: email) { error ->
+                                    message = error ?: "Account created successfully."
+                                }
                             } else {
-                                message = "Signed in successfully."
                                 registerCurrentDeviceToken()
+                                message = "Signed in successfully."
                             }
                         } else {
                             message = result.exception?.localizedMessage ?: "Authentication failed."
                         }
                     }
                 },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
+                enabled = !busy, modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (busy) "Please wait..." else if (isRegister) "Create account" else "Sign in")
             }
-            TextButton(onClick = {
-                isRegister = !isRegister
-                message = ""
-            }) {
+            TextButton(onClick = { isRegister = !isRegister; message = "" }) {
                 Text(if (isRegister) "Already have an account? Sign in" else "New here? Create an account")
             }
             if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
         }
     } else {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
+        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
             Text("Welcome to CodeBihin", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
             Text(user?.email ?: "Signed in")
             Spacer(Modifier.height(12.dp))
-            Text("Your account is connected to Firebase. Chat features are the next development milestone.")
+            Text("Your Firebase account is active. Push notification registration is enabled on this device.")
             Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = { auth.signOut(); message = "" },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Sign out") }
+            Button(onClick = { auth.signOut(); message = "" }, modifier = Modifier.fillMaxWidth()) {
+                Text("Sign out")
+            }
         }
     }
 }
 
+private fun saveUserProfile(uid: String, name: String, userEmail: String, onComplete: (String?) -> Unit) {
+    val profile = hashMapOf(
+        "displayName" to name,
+        "email" to userEmail,
+        "createdAt" to FieldValue.serverTimestamp()
+    )
+    FirebaseFirestore.getInstance().collection("users").document(uid).set(profile)
+        .addOnSuccessListener {
+            registerCurrentDeviceToken()
+            onComplete(null)
+        }
+        .addOnFailureListener { onComplete(it.localizedMessage ?: "Could not save your profile.") }
+}
+
 internal fun registerCurrentDeviceToken() {
-    FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-        addDeviceToken(token)
-    }
+    FirebaseMessaging.getInstance().token.addOnSuccessListener { token -> addDeviceToken(token) }
 }
 
 internal fun addDeviceToken(token: String) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-    FirebaseFirestore.getInstance()
-        .collection("users").document(uid)
-        .update("fcmTokens", FieldValue.arrayUnion(token))
+    val tokenData = mapOf("fcmTokens" to FieldValue.arrayUnion(token))
+    FirebaseFirestore.getInstance().collection("users").document(uid)
+        .set(tokenData, SetOptions.merge())
 }
