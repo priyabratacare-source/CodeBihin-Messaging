@@ -33,8 +33,12 @@
 </main>
 <script>
 const firebaseConfig={apiKey:"AIzaSyDbIQL-CZyreEbnWeGUWR2EwX4VDAHMZkQ",authDomain:"codebihin-messaging.firebaseapp.com",projectId:"codebihin-messaging",storageBucket:"codebihin-messaging.firebasestorage.app",messagingSenderId:"849465329627",appId:"PASTE_FIREBASE_WEB_APP_ID_HERE"};
-const configReady = !firebaseConfig.appId.includes("PASTE_");\nif(configReady) firebase.initializeApp(firebaseConfig);\nconst auth = configReady ? firebase.auth() : null;\nconst db = configReady ? firebase.firestore() : null;\nif(!configReady){$("loginMsg").textContent="Setup required: register a Web app in Firebase Console, then replace PASTE_FIREBASE_WEB_APP_ID_HERE with its Web App ID."; $("loginBtn").disabled=true;}
-const $=id=>document.getElementById(id);let guard=false;
+const configReady = !firebaseConfig.appId.includes("PASTE_");
+if(configReady) firebase.initializeApp(firebaseConfig);
+const auth = configReady ? firebase.auth() : null;
+const db = configReady ? firebase.firestore() : null;
+const $=id=>document.getElementById(id);
+if(!configReady){$("loginMsg").textContent="Setup required: register a Web app in Firebase Console, then replace PASTE_FIREBASE_WEB_APP_ID_HERE with its Web App ID."; $("loginBtn").disabled=true;}
 $("loginBtn").onclick=async()=>{ if(!configReady)return; $("loginMsg").textContent="Signing in…";try{await auth.signInWithEmailAndPassword($("email").value.trim(),$("password").value)}catch(e){$("loginMsg").textContent=e.message}};
 $("logout").onclick=()=>auth && auth.signOut();
 if(configReady) auth.onAuthStateChanged(async user=>{
