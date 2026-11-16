@@ -2,6 +2,15 @@
 
 Native Android messaging app built with Kotlin, Jetpack Compose and Firebase.
 
+## Mobile UI prototype (design target)
+
+Full interactive HTML prototype for the product UI (Auth, Chats, Status, Community, Calls, Profile, conversation, live location, CBS badges).
+
+- **File:** [`web/mobile-ui-prototype.html`](web/mobile-ui-prototype.html) — open in a browser (needs Tailwind CDN + fonts).
+- **Notes:** [`docs/MOBILE_UI_PROTOTYPE.md`](docs/MOBILE_UI_PROTOTYPE.md)
+- Demo sign-in accepts any valid-looking email and a password of 6+ characters (local-only).
+- This is the visual/interaction target for Compose work in `app/`.
+
 ## Firebase project
 
 - Project ID: `codebihin-messaging`
@@ -90,15 +99,17 @@ The admin portal provides user/conversation overview and announcement publishing
 ## Repository structure
 
 ```
-app/                    Android app
-admin/                  Firebase-hosted admin portal
-firebase/firestore.rules Firestore security rules
-functions/              FCM notification Cloud Functions
-.github/workflows/      GitHub Actions APK build
-firebase.json           Firebase deployment configuration
-.firebaserc             Default Firebase project
+app/                          Android app (Kotlin + Compose)
+web/mobile-ui-prototype.html  Interactive mobile UI design target
+web/                          Older web client assets
+admin/                        Firebase-hosted admin portal
+firebase/firestore.rules      Firestore security rules
+functions/                    FCM notification Cloud Functions
+docs/                         Implementation plan + UI prototype notes
+.github/workflows/            GitHub Actions APK build
+firebase.json                 Firebase deployment configuration
+.firebaserc                   Default Firebase project
 ```
-
 
 ## Product roadmap
 
@@ -106,6 +117,7 @@ The phased product and engineering plan for WhatsApp-style messaging, groups/cha
 
 ## Important production work remaining
 
+- Align Compose UI with `web/mobile-ui-prototype.html` (shell, chat list, conversation, tabs, profile).
 - Embedded voice/video calling with authenticated WebRTC, TURN and call lifecycle handling.
 - Typing indicators, online status and paginated message history.
 - Native WebRTC calling (current call button still uses external Jitsi).
