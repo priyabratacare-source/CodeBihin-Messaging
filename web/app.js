@@ -31,7 +31,7 @@ function friendly(e){const c=e?.code||"";if(c.includes("permission-denied"))retu
 onAuthStateChanged(auth,async user=>{cleanup();state.user=user;show("authView",!user);show("appView",!!user);if(!user)return;try{
  const ref=doc(db,"users",user.uid),snap=await getDoc(ref);state.profile=snap.exists()?snap.data():{displayName:user.displayName||"User",email:user.email};
  if(state.profile.disabled===true){await signOut(auth);note("authStatus","This account is disabled. Contact an administrator.");return}
- await setDoc(ref,{uid:user.uid,displayName:state.profile.displayName||user.displayName||"User",email:user.email||"",lastSeen:serverTimestamp()},{merge:true});
+ if(snap.exists()) await updateDoc(ref,{lastSeen:serverTimestamp()}); else await setDoc(ref,{uid:user.uid,displayName:state.profile.displayName||user.displayName||"User",email:user.email||"",createdAt:serverTimestamp()});
  renderMe();startChatList();}catch(e){note("chatStatus",friendly(e))}});
 function cleanup(){state.listStop?.();state.msgStop?.();state.chatStop?.();state.listStop=state.msgStop=state.chatStop=null;state.activeChat=null}
 function renderMe(){const name=state.profile?.displayName||state.user?.displayName||"User";$("myName").textContent=name;$("myEmail").textContent=state.user?.email||"";$("myAvatar").textContent=initials(name)}
