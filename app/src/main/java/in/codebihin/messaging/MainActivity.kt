@@ -201,112 +201,229 @@ private fun AuthScreen() {
     var resetDialog by remember { mutableStateOf(false) }
     var resetEmail by remember { mutableStateOf("") }
 
-    val navy = Color(0xFF14233D)
+    val navy = Color(0xFF14213D)
     val muted = Color(0xFF64748B)
+    val indigo = Color(0xFF4F46E5)
+    val pale = Color(0xFFF4F6FF)
+    val strength = when {
+        password.isEmpty() -> 0
+        password.length < 6 -> 1
+        password.length < 8 -> 2
+        password.any { it.isDigit() } && password.any { it.isUpperCase() } -> 4
+        else -> 3
+    }
+    val strengthLabel = when (strength) {
+        0 -> "Min. 6 characters"
+        1 -> "Too short"
+        2 -> "Fair"
+        3 -> "Good"
+        else -> "Strong"
+    }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF3F6FC))
+        modifier = Modifier.fillMaxSize().background(pale)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 30.dp),
+            modifier = Modifier.fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                modifier = Modifier.size(76.dp),
+                modifier = Modifier.size(68.dp),
                 shape = MaterialTheme.shapes.extraLarge,
-                color = Color(0xFF315DEB),
-                shadowElevation = 10.dp
+                color = indigo,
+                shadowElevation = 12.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("‹/›", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 }
             }
-            Spacer(Modifier.height(16.dp))
-            Text("CodeBihin", style = MaterialTheme.typography.headlineLarge, color = navy)
-            Text("MESSAGING", style = MaterialTheme.typography.labelMedium, color = Color(0xFF315DEB))
-            Spacer(Modifier.height(7.dp))
-            Text("Stay connected. Chat freely.", style = MaterialTheme.typography.bodyMedium, color = muted)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "CodeBihin",
+                style = MaterialTheme.typography.headlineLarge,
+                color = navy
+            )
+            Text(
+                "MESSAGING",
+                style = MaterialTheme.typography.labelMedium,
+                color = indigo
+            )
+            Spacer(Modifier.height(5.dp))
+            Text(
+                "Your conversations, all in one place.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = muted
+            )
+            Spacer(Modifier.height(24.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
             ) {
-                Column(Modifier.fillMaxWidth().padding(22.dp)) {
+                Column(Modifier.fillMaxWidth().padding(20.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(Color(0xFFF0F3FA)).padding(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(MaterialTheme.shapes.large)
+                            .background(Color(0xFFF0F2FA))
+                            .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf(false to "Sign In", true to "Create Account").forEach { (isRegister, label) ->
                             Surface(
-                                modifier = Modifier.weight(1f).clickable { register = isRegister; note = "" },
+                                modifier = Modifier.weight(1f).clickable {
+                                    register = isRegister
+                                    note = ""
+                                },
                                 shape = MaterialTheme.shapes.medium,
                                 color = if (register == isRegister) Color.White else Color.Transparent,
                                 shadowElevation = if (register == isRegister) 2.dp else 0.dp
                             ) {
-                                Box(Modifier.padding(vertical = 11.dp), contentAlignment = Alignment.Center) {
-                                    Text(label, color = if (register == isRegister) navy else muted, style = MaterialTheme.typography.labelLarge)
+                                Box(Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        label,
+                                        color = if (register == isRegister) navy else muted,
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
                                 }
                             }
                         }
                     }
-                    Spacer(Modifier.height(22.dp))
-                    Text(if (register) "Create your account" else "Welcome back", style = MaterialTheme.typography.headlineSmall, color = navy)
-                    Text(if (register) "A few details and you’re ready to connect." else "Sign in to continue to your messages.", style = MaterialTheme.typography.bodySmall, color = muted)
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        if (register) "Create your account" else "Welcome back",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = navy
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (register) "Join CodeBihin and start connecting." else "Sign in to continue to your messages.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = muted
+                    )
                     Spacer(Modifier.height(18.dp))
 
                     if (register) {
                         OutlinedTextField(
-                            value = name, onValueChange = { name = it; note = "" },
-                            modifier = Modifier.fillMaxWidth(), singleLine = true,
-                            label = { Text("Full name") }, placeholder = { Text("Your name") },
-                            leadingIcon = { Text("◉", color = muted) },
-                            shape = MaterialTheme.shapes.large
+                            value = name,
+                            onValueChange = { name = it; note = "" },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Full name") },
+                            placeholder = { Text("Your full name") },
+                            leadingIcon = { Text("●", color = muted) },
+                            shape = MaterialTheme.shapes.large,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = indigo,
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
                         )
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(11.dp))
                     }
+
                     OutlinedTextField(
-                        value = email, onValueChange = { email = it.trim(); note = "" },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("Email address") }, placeholder = { Text("name@example.com") },
+                        value = email,
+                        onValueChange = { email = it.trim(); note = "" },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Email address") },
+                        placeholder = { Text("name@example.com") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         leadingIcon = { Text("✉", color = muted) },
-                        shape = MaterialTheme.shapes.large
+                        shape = MaterialTheme.shapes.large,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = indigo,
+                            unfocusedBorderColor = Color(0xFFE2E8F0)
+                        )
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(11.dp))
+
                     OutlinedTextField(
-                        value = password, onValueChange = { password = it; note = "" },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("Password") }, placeholder = { Text("At least 6 characters") },
+                        value = password,
+                        onValueChange = { password = it; note = "" },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Password") },
+                        placeholder = { Text("At least 6 characters") },
                         leadingIcon = { Text("▣", color = muted) },
                         visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
-                            TextButton(onClick = { passwordVisible = !passwordVisible }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                                Text(if (passwordVisible) "Hide" else "Show")
-                            }
+                            TextButton(
+                                onClick = { passwordVisible = !passwordVisible },
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) { Text(if (passwordVisible) "Hide" else "Show") }
                         },
-                        shape = MaterialTheme.shapes.large
+                        shape = MaterialTheme.shapes.large,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = indigo,
+                            unfocusedBorderColor = Color(0xFFE2E8F0)
+                        )
                     )
+
                     if (register) {
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(7.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            repeat(4) { index ->
+                                Box(
+                                    Modifier.weight(1f).height(4.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (index < strength) {
+                                                if (strength <= 1) Color(0xFFEF4444)
+                                                else if (strength <= 2) Color(0xFFF59E0B)
+                                                else Color(0xFF10B981)
+                                            } else Color(0xFFE2E8F0)
+                                        )
+                                )
+                            }
+                        }
+                        Text(
+                            strengthLabel,
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            color = if (strength <= 1 && password.isNotEmpty()) Color(0xFFDC2626) else muted,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
-                            value = confirmPassword, onValueChange = { confirmPassword = it; note = "" },
-                            modifier = Modifier.fillMaxWidth(), singleLine = true,
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it; note = "" },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
                             label = { Text("Confirm password") },
+                            placeholder = { Text("Re-enter password") },
                             visualTransformation = if (confirmVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
-                                TextButton(onClick = { confirmVisible = !confirmVisible }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                                    Text(if (confirmVisible) "Hide" else "Show")
-                                }
+                                TextButton(
+                                    onClick = { confirmVisible = !confirmVisible },
+                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                ) { Text(if (confirmVisible) "Hide" else "Show") }
                             },
-                            shape = MaterialTheme.shapes.large
+                            shape = MaterialTheme.shapes.large,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = indigo,
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
                         )
+                        if (confirmPassword.isNotEmpty()) {
+                            Text(
+                                if (confirmPassword == password) "✓ Passwords match" else "Passwords do not match",
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                color = if (confirmPassword == password) Color(0xFF059669) else Color(0xFFDC2626),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     } else {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { resetEmail = email; resetDialog = true }) { Text("Forgot password?") }
+                            TextButton(onClick = { resetEmail = email; resetDialog = true }) {
+                                Text("Forgot password?", color = indigo)
+                            }
                         }
                     }
 
@@ -314,7 +431,7 @@ private fun AuthScreen() {
                         Spacer(Modifier.height(8.dp))
                         Text(note, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(13.dp))
                     Button(
                         onClick = {
                             val cleanEmail = email.trim()
@@ -334,7 +451,10 @@ private fun AuthScreen() {
                                             val user = auth.currentUser
                                             if (user != null && register) {
                                                 val displayName = name.trim()
-                                                user.updateProfile(com.google.firebase.auth.UserProfileChangeRequest.Builder().setDisplayName(displayName).build())
+                                                user.updateProfile(
+                                                    com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                                        .setDisplayName(displayName).build()
+                                                )
                                                 val profile = mapOf(
                                                     "uid" to user.uid,
                                                     "displayName" to displayName,
@@ -343,14 +463,19 @@ private fun AuthScreen() {
                                                 )
                                                 db.collection("users").document(user.uid).set(profile, SetOptions.merge())
                                                 db.collection("publicProfiles").document(user.uid).set(
-                                                    mapOf("uid" to user.uid, "displayName" to displayName, "createdAt" to FieldValue.serverTimestamp()),
+                                                    mapOf(
+                                                        "uid" to user.uid,
+                                                        "displayName" to displayName,
+                                                        "createdAt" to FieldValue.serverTimestamp()
+                                                    ),
                                                     SetOptions.merge()
                                                 )
                                             }
                                             registerCurrentDeviceToken()
                                             note = ""
                                         } else {
-                                            note = result.exception?.localizedMessage ?: "Authentication failed. Please try again."
+                                            note = result.exception?.localizedMessage
+                                                ?: "Authentication failed. Please try again."
                                         }
                                     }
                                 }
@@ -359,28 +484,58 @@ private fun AuthScreen() {
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth().height(54.dp),
                         shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF315DEB))
+                        colors = ButtonDefaults.buttonColors(containerColor = indigo)
                     ) {
-                        if (busy) CircularProgressIndicator(Modifier.size(19.dp), color = Color.White, strokeWidth = 2.dp)
-                        else Text(if (register) "Create Account  →" else "Sign In  →", style = MaterialTheme.typography.titleSmall)
+                        if (busy) {
+                            CircularProgressIndicator(
+                                Modifier.size(19.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                if (register) "Create Account   ✓" else "Sign In   →",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(14.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (register) "Already have an account?" else "New to CodeBihin?", color = muted, style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = { register = !register; note = ""; confirmPassword = "" }) {
-                            Text(if (register) "Sign in" else "Create account")
+                    Spacer(Modifier.height(13.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (register) "Already have an account?" else "Don't have an account?",
+                            color = muted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        TextButton(onClick = {
+                            register = !register
+                            note = ""
+                            confirmPassword = ""
+                        }) {
+                            Text(if (register) "Sign In" else "Create Account", color = indigo)
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(17.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("◆", color = Color(0xFF0F9D78), style = MaterialTheme.typography.labelSmall)
+                Text("◆", color = Color(0xFF059669), style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.width(6.dp))
-                Text("Your account is protected by Firebase Authentication", color = muted, style = MaterialTheme.typography.labelSmall)
+                Text(
+                    "Secure sign-in powered by Firebase",
+                    color = muted,
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
-            Spacer(Modifier.height(12.dp))
-            Text("CodeBihin Messaging", color = Color(0xFF94A3B8), style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(7.dp))
+            Text(
+                "CodeBihin Messaging",
+                color = Color(0xFF94A3B8),
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 
@@ -393,8 +548,10 @@ private fun AuthScreen() {
                     Text("Enter your account email. We’ll send you a secure password reset link.")
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
-                        value = resetEmail, onValueChange = { resetEmail = it },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        value = resetEmail,
+                        onValueChange = { resetEmail = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
                         label = { Text("Email address") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                     )
@@ -407,8 +564,13 @@ private fun AuthScreen() {
                         note = "Enter a valid email address."
                     } else {
                         auth.sendPasswordResetEmail(address)
-                            .addOnSuccessListener { note = "Password reset email sent. Check your inbox."; resetDialog = false }
-                            .addOnFailureListener { note = it.localizedMessage ?: "Could not send reset email." }
+                            .addOnSuccessListener {
+                                note = "Password reset email sent. Check your inbox."
+                                resetDialog = false
+                            }
+                            .addOnFailureListener {
+                                note = it.localizedMessage ?: "Could not send reset email."
+                            }
                     }
                 }) { Text("Send link") }
             },
