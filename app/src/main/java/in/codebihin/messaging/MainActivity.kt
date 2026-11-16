@@ -10,6 +10,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -385,6 +389,11 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
     var link by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
+    var replyTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    var menuMessageId by remember { mutableStateOf<String?>(null) }
+    var editingMessage by remember { mutableStateOf<ChatMessage?>(null) }
+    var editText by remember { mutableStateOf("") }
+    var deletingMessage by remember { mutableStateOf<ChatMessage?>(null) }
 
     DisposableEffect(chat.id) {
         val listener = db.collection("chats").document(chat.id).collection("messages")
@@ -397,7 +406,9 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                         senderId = d.getString("senderId") ?: "",
                         senderName = d.getString("senderName") ?: "User",
                         text = d.getString("text") ?: "",
-                        attachmentUrl = d.getString("attachmentUrl") ?: ""
+                        attachmentUrl = d.getString("attachmentUrl") ?: "",
+                        replyToText = d.getString("replyToText") ?: "",
+                        edited = d.getTimestamp("editedAt") != null
                     )
                 } ?: emptyList()
             }
@@ -440,8 +451,22 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                     ) {
                         Column(Modifier.padding(10.dp)) {
                             if (chat.isGroup && !mine) Text(msg.senderName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            if (msg.replyToText.isNotBlank()) Text("↪ " + msg.replyToText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             if (msg.text.isNotBlank()) Text(msg.text)
+                            if (msg.edited) Text("edited", style = MaterialTheme.typography.labelSmall)
                             if (msg.attachmentUrl.isNotBlank()) TextButton(onClick = { openExternal(msg.attachmentUrl) }) { Text("Open shared link ↗") }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { replyTarget = msg }) { Icon(Icons.Filled.Reply, contentDescription = "Reply"); Text("Reply") }
+                                if (mine) {
+                                    Box {
+                                        IconButton(onClick = { menuMessageId = msg.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Message options") }
+                                        DropdownMenu(expanded = menuMessageId == msg.id, onDismissRequest = { menuMessageId = null }) {
+                                            DropdownMenuItem(text = { Text("Edit") }, leadingIcon = { Icon(Icons.Filled.Edit, null) }, onClick = { editingMessage = msg; editText = msg.text; menuMessageId = null })
+                                            DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { deletingMessage = msg; menuMessageId = null })
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -449,6 +474,12 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
         }
         HorizontalDivider()
         Column(Modifier.padding(10.dp)) {
+            if (replyTarget != null) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Replying to: " + (replyTarget?.text ?: "").take(90), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { replyTarget = null }) { Text("Cancel") }
+                }
+            }
             OutlinedTextField(text, { text = it }, label = { Text("Message") }, modifier = Modifier.fillMaxWidth(), maxLines = 3)
             OutlinedTextField(link, { link = it }, label = { Text("Optional hosted file / Drive link") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), singleLine = true, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -465,6 +496,8 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                             "senderName" to userName,
                             "text" to body,
                             "attachmentUrl" to attachment,
+                            "replyToId" to (replyTarget?.id ?: ""),
+                            "replyToText" to (replyTarget?.text?.take(300) ?: ""),
                             "createdAt" to FieldValue.serverTimestamp()
                         )
                         db.collection("chats").document(chat.id).collection("messages").add(payload)
@@ -472,13 +505,51 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
                                 db.collection("chats").document(chat.id).update(
                                     mapOf("lastMessage" to if (body.isNotBlank()) body else "Shared a link", "updatedAt" to FieldValue.serverTimestamp())
                                 )
-                                text = ""; link = ""; busy = false; note = ""
+                                text = ""; link = ""; replyTarget = null; busy = false; note = ""
                             }
                             .addOnFailureListener { busy = false; note = it.localizedMessage ?: "Message failed." }
                     }
                 }) { Icon(Icons.Filled.Send, contentDescription = "Send message"); Spacer(Modifier.width(6.dp)); Text(if (busy) "Sending…" else "Send") }
             }
         }
+    }
+
+    if (editingMessage != null) {
+        AlertDialog(
+            onDismissRequest = { editingMessage = null },
+            title = { Text("Edit message") },
+            text = { OutlinedTextField(editText, { editText = it }, modifier = Modifier.fillMaxWidth(), maxLines = 5) },
+            confirmButton = {
+                TextButton(enabled = editText.isNotBlank() && editText.length <= 4000, onClick = {
+                    val target = editingMessage!!
+                    db.collection("chats").document(chat.id).collection("messages").document(target.id)
+                        .update(mapOf("text" to editText.trim(), "editedAt" to FieldValue.serverTimestamp()))
+                        .addOnSuccessListener { note = "Message updated." }
+                        .addOnFailureListener { note = it.localizedMessage ?: "Could not edit message." }
+                    editingMessage = null
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { editingMessage = null }) { Text("Cancel") } }
+        )
+    }
+
+    if (deletingMessage != null) {
+        AlertDialog(
+            onDismissRequest = { deletingMessage = null },
+            title = { Text("Delete message?") },
+            text = { Text("This removes the message for everyone in this conversation.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val target = deletingMessage!!
+                    db.collection("chats").document(chat.id).collection("messages").document(target.id)
+                        .delete()
+                        .addOnSuccessListener { note = "Message deleted." }
+                        .addOnFailureListener { note = it.localizedMessage ?: "Could not delete message." }
+                    deletingMessage = null
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { deletingMessage = null }) { Text("Cancel") } }
+        )
     }
 }
 
@@ -492,7 +563,7 @@ private fun EmptyState(title: String, subtitle: String) {
 
 private data class Person(val uid: String, val name: String, val email: String)
 private data class ChatItem(val id: String, val title: String, val lastMessage: String, val isGroup: Boolean, val members: List<String>)
-private data class ChatMessage(val id: String, val senderId: String, val senderName: String, val text: String, val attachmentUrl: String)
+private data class ChatMessage(val id: String, val senderId: String, val senderName: String, val text: String, val attachmentUrl: String, val replyToText: String = "", val edited: Boolean = false)
 
 internal fun registerCurrentDeviceToken() {
     FirebaseMessaging.getInstance().token.addOnSuccessListener { token -> addDeviceToken(token) }
