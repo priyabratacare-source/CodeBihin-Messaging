@@ -1,4 +1,4 @@
-package in.codebihin.messaging
+package `in`.codebihin.messaging
 
 import android.Manifest
 import android.content.Intent
