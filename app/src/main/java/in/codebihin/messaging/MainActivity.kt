@@ -79,8 +79,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        else startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))
+        val enabled = NotificationManagerCompat.from(this).areNotificationsEnabled()
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (!enabled) {
+            startActivity(
+                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+            )
+        }
     }
 
     private fun openExternal(url: String) {
@@ -421,6 +430,22 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                     Text("Your account", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
                     Text(auth.currentUser?.displayName ?: auth.currentUser?.email.orEmpty())
                     Text("User ID: $uid", style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(18.dp))
+                    val context = LocalContext.current
+                    val notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+                    Text("Notifications", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (notificationsEnabled) "Notifications are enabled. New alerts can appear in your device notification bar."
+                        else "Notifications are currently disabled. Enable permission to receive message alerts in your notification bar.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = requestNotifications, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Notifications, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (notificationsEnabled) "Notification settings" else "Enable notifications")
+                    }
                     Spacer(Modifier.height(18.dp))
                     Text("Attachments use hosted links. CodeBihin does not upload or store your files.")
                     Text("Voice/video calls open a private meeting room in your browser or installed meeting app.")
