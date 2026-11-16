@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.compose.runtime.*
@@ -183,6 +184,9 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
     var people by remember { mutableStateOf<List<Person>>(emptyList()) }
     var error by remember { mutableStateOf("") }
     var showGroupDialog by remember { mutableStateOf(false) }
+    var showChannelDialog by remember { mutableStateOf(false) }
+    var channels by remember { mutableStateOf<List<ChannelItem>>(emptyList()) }
+    var selectedChannel by remember { mutableStateOf<ChannelItem?>(null) }
 
     DisposableEffect(uid) {
         var chatListener: ListenerRegistration? = null
@@ -199,7 +203,14 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                     )
                 }?.sortedByDescending { it.lastMessage } ?: emptyList()
             }
-        onDispose { chatListener?.remove() }
+        val channelListener = db.collection("channels").whereEqualTo("visibility", "public").limit(100)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) error = e.localizedMessage ?: "Could not load channels."
+                else channels = snapshot?.documents?.map { d ->
+                    ChannelItem(d.id, d.getString("name") ?: "Channel", d.getString("description") ?: "", d.getString("ownerUid") ?: "", (d.get("admins") as? List<*>)?.filterIsInstance<String>() ?: emptyList())
+                } ?: emptyList()
+            }
+        onDispose { chatListener?.remove(); channelListener.remove() }
     }
 
     LaunchedEffect(tab) {
@@ -213,6 +224,11 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 }
                 .addOnFailureListener { error = it.localizedMessage ?: "Could not load users." }
         }
+    }
+
+    if (selectedChannel != null) {
+        ChannelScreen(channel = selectedChannel!!, onBack = { selectedChannel = null })
+        return
     }
 
     if (selectedChat != null) {
@@ -241,14 +257,15 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
         floatingActionButton = {
             if (tab == "Chats") FloatingActionButton(onClick = { tab = "People" }) { Text("+") }
             if (tab == "Groups") FloatingActionButton(onClick = { showGroupDialog = true }) { Text("+") }
+            if (tab == "Channels") FloatingActionButton(onClick = { showChannelDialog = true }) { Text("+") }
         },
         bottomBar = {
             NavigationBar {
-                listOf("Chats", "People", "Groups", "Profile").forEach { item ->
+                listOf("Chats", "People", "Groups", "Channels", "Profile").forEach { item ->
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
-                        icon = { Icon(when (item) { "Chats" -> Icons.Filled.Chat; "People" -> Icons.Filled.People; "Groups" -> Icons.Filled.Groups; else -> Icons.Filled.Person }, contentDescription = item) },
+                        icon = { Icon(when (item) { "Chats" -> Icons.Filled.Chat; "People" -> Icons.Filled.People; "Groups" -> Icons.Filled.Groups; "Channels" -> Icons.Filled.Campaign; else -> Icons.Filled.Person }, contentDescription = item) },
                         label = { Text(item) }
                     )
                 }
@@ -300,6 +317,21 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                         }
                     }
                 }
+                "Channels" -> {
+                    Text("Public channels", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
+                    if (channels.isEmpty()) EmptyState("No public channels yet", "Tap + to create the first channel.")
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(channels, key = { it.id }) { channel ->
+                            Card(Modifier.fillMaxWidth().clickable { selectedChannel = channel }) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(channel.name, style = MaterialTheme.typography.titleMedium)
+                                    Text(channel.description, style = MaterialTheme.typography.bodySmall)
+                                    Text(if (channel.ownerUid == uid) "You manage this channel" else "Public channel", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+                }
                 "Groups" -> {
                     Text("Your groups", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
                     val groups = chats.filter { it.isGroup }
@@ -322,6 +354,26 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
                 }
             }
         }
+    }
+
+    if (showChannelDialog) {
+        ChannelCreateDialog(
+            onDismiss = { showChannelDialog = false },
+            onCreate = { name, description ->
+                val ref = db.collection("channels").document()
+                ref.set(mapOf(
+                    "name" to name,
+                    "description" to description,
+                    "ownerUid" to uid,
+                    "admins" to listOf(uid),
+                    "members" to listOf(uid),
+                    "visibility" to "public",
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )).addOnFailureListener { error = it.localizedMessage ?: "Could not create channel." }
+                showChannelDialog = false
+            }
+        )
     }
 
     if (showGroupDialog) {
@@ -351,6 +403,69 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
         )
     }
 }
+
+
+@Composable
+private fun ChannelCreateDialog(onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create public channel") },
+        text = {
+            Column {
+                OutlinedTextField(name, { name = it }, label = { Text("Channel name") }, singleLine = true)
+                OutlinedTextField(description, { description = it }, label = { Text("Description") }, maxLines = 3)
+                Text("Only channel owners and admins can publish posts.", style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { onCreate(name.trim(), description.trim()) }) { Text("Create") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChannelScreen(channel: ChannelItem, onBack: () -> Unit) {
+    val uid = auth.currentUser?.uid.orEmpty()
+    var posts by remember { mutableStateOf<List<ChannelPost>>(emptyList()) }
+    var draft by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+    val canPost = channel.ownerUid == uid || channel.admins.contains(uid)
+    DisposableEffect(channel.id) {
+        val listener = db.collection("channels").document(channel.id).collection("posts")
+            .orderBy("createdAt", Query.Direction.DESCENDING).limit(100)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) error = e.localizedMessage ?: "Could not load channel posts."
+                else posts = snapshot?.documents?.map { d -> ChannelPost(d.id, d.getString("text") ?: "", d.getString("authorUid") ?: "") } ?: emptyList()
+            }
+        onDispose { listener.remove() }
+    }
+    Column(Modifier.fillMaxSize()) {
+        TopAppBar(title = { Column { Text(channel.name); Text("Public channel", style = MaterialTheme.typography.labelSmall) } }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } })
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
+        LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(posts, key = { it.id }) { post ->
+                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp)) { Text(post.text); Text(if (post.authorUid == uid) "You" else "Channel admin", style = MaterialTheme.typography.labelSmall) } }
+            }
+        }
+        if (canPost) {
+            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(draft, { draft = it }, modifier = Modifier.weight(1f), label = { Text("Write an announcement") }, maxLines = 3)
+                IconButton(enabled = draft.isNotBlank(), onClick = {
+                    val value = draft.trim()
+                    db.collection("channels").document(channel.id).collection("posts").add(mapOf("authorUid" to uid, "text" to value, "attachmentUrl" to "", "createdAt" to FieldValue.serverTimestamp()))
+                        .addOnSuccessListener { draft = "" }
+                        .addOnFailureListener { error = it.localizedMessage ?: "Could not publish." }
+                }) { Icon(Icons.Filled.Send, contentDescription = "Publish") }
+            }
+        } else {
+            Text("Only this channel's owner or administrators can publish.", Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+private data class ChannelPost(val id: String, val text: String, val authorUid: String)
 
 @Composable
 private fun GroupCreateDialog(people: List<Person>, onDismiss: () -> Unit, onCreate: (String, List<String>) -> Unit) {
@@ -563,6 +678,7 @@ private fun EmptyState(title: String, subtitle: String) {
 }
 
 private data class Person(val uid: String, val name: String, val email: String)
+private data class ChannelItem(val id: String, val name: String, val description: String, val ownerUid: String, val admins: List<String>)
 private data class ChatItem(val id: String, val title: String, val lastMessage: String, val isGroup: Boolean, val members: List<String>)
 private data class ChatMessage(val id: String, val senderId: String, val senderName: String, val text: String, val attachmentUrl: String, val replyToText: String = "", val edited: Boolean = false)
 
