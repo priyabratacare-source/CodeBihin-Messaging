@@ -1,0 +1,1 @@
+adminReady.then(user=>{if(!user)return;const el=$("pageMsg");if(el)el.textContent="Workspace security is verified through Firebase Authentication and the admins collection."});
