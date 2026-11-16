@@ -182,84 +182,235 @@ private fun CodeBihinRoot(openExternal: (String) -> Unit, requestNotifications: 
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AuthScreen() {
     var register by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmVisible by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
+    var resetDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
 
-    Column(
-        Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center
+    val navy = Color(0xFF14233D)
+    val muted = Color(0xFF64748B)
+    val validEmail = android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
+
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF3F6FC))
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp),
-            color = MaterialTheme.colorScheme.primary,
-            shape = MaterialTheme.shapes.extraLarge
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(Modifier.padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.16f), modifier = Modifier.size(76.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("C", color = Color.White, style = MaterialTheme.typography.headlineLarge)
+            Surface(
+                modifier = Modifier.size(76.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = Color(0xFF315DEB),
+                shadowElevation = 10.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("‹/›", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("CodeBihin", style = MaterialTheme.typography.headlineLarge, color = navy)
+            Text("MESSAGING", style = MaterialTheme.typography.labelMedium, color = Color(0xFF315DEB), letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
+            Spacer(Modifier.height(7.dp))
+            Text("Stay connected. Chat freely.", style = MaterialTheme.typography.bodyMedium, color = muted)
+            Spacer(Modifier.height(28.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(22.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(Color(0xFFF0F3FA)).padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        listOf(false to "Sign In", true to "Create Account").forEach { (isRegister, label) ->
+                            Surface(
+                                modifier = Modifier.weight(1f).clickable { register = isRegister; note = "" },
+                                shape = MaterialTheme.shapes.medium,
+                                color = if (register == isRegister) Color.White else Color.Transparent,
+                                shadowElevation = if (register == isRegister) 2.dp else 0.dp
+                            ) {
+                                Box(Modifier.padding(vertical = 11.dp), contentAlignment = Alignment.Center) {
+                                    Text(label, color = if (register == isRegister) navy else muted, style = MaterialTheme.typography.labelLarge)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(22.dp))
+                    Text(if (register) "Create your account" else "Welcome back", style = MaterialTheme.typography.headlineSmall, color = navy)
+                    Text(if (register) "A few details and you’re ready to connect." else "Sign in to continue to your messages.", style = MaterialTheme.typography.bodySmall, color = muted)
+                    Spacer(Modifier.height(18.dp))
+
+                    if (register) {
+                        OutlinedTextField(
+                            value = name, onValueChange = { name = it; note = "" },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true,
+                            label = { Text("Full name") }, placeholder = { Text("Your name") },
+                            leadingIcon = { Text("◉", color = muted) },
+                            shape = MaterialTheme.shapes.large
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    OutlinedTextField(
+                        value = email, onValueChange = { email = it.trim(); note = "" },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        label = { Text("Email address") }, placeholder = { Text("name@example.com") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        leadingIcon = { Text("✉", color = muted) },
+                        shape = MaterialTheme.shapes.large
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = password, onValueChange = { password = it; note = "" },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        label = { Text("Password") }, placeholder = { Text("At least 6 characters") },
+                        leadingIcon = { Text("▣", color = muted) },
+                        visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            TextButton(onClick = { passwordVisible = !passwordVisible }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                Text(if (passwordVisible) "Hide" else "Show")
+                            }
+                        },
+                        shape = MaterialTheme.shapes.large
+                    )
+                    if (register) {
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = confirmPassword, onValueChange = { confirmPassword = it; note = "" },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true,
+                            label = { Text("Confirm password") },
+                            visualTransformation = if (confirmVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                TextButton(onClick = { confirmVisible = !confirmVisible }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                    Text(if (confirmVisible) "Hide" else "Show")
+                                }
+                            },
+                            shape = MaterialTheme.shapes.large
+                        )
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { resetEmail = email; resetDialog = true }) { Text("Forgot password?") }
+                        }
+                    }
+
+                    if (note.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(note, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val cleanEmail = email.trim()
+                            when {
+                                register && name.trim().length < 2 -> note = "Please enter your full name."
+                                !android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() -> note = "Please enter a valid email address."
+                                password.length < 6 -> note = "Password must be at least 6 characters."
+                                register && password != confirmPassword -> note = "Passwords do not match."
+                                else -> {
+                                    busy = true
+                                    note = ""
+                                    val task = if (register) auth.createUserWithEmailAndPassword(cleanEmail, password)
+                                    else auth.signInWithEmailAndPassword(cleanEmail, password)
+                                    task.addOnCompleteListener { result ->
+                                        busy = false
+                                        if (result.isSuccessful) {
+                                            val user = auth.currentUser
+                                            if (user != null && register) {
+                                                val displayName = name.trim()
+                                                user.updateProfile(com.google.firebase.auth.UserProfileChangeRequest.Builder().setDisplayName(displayName).build())
+                                                val profile = mapOf(
+                                                    "uid" to user.uid,
+                                                    "displayName" to displayName,
+                                                    "email" to (user.email ?: cleanEmail),
+                                                    "createdAt" to FieldValue.serverTimestamp()
+                                                )
+                                                db.collection("users").document(user.uid).set(profile, SetOptions.merge())
+                                                db.collection("publicProfiles").document(user.uid).set(
+                                                    mapOf("uid" to user.uid, "displayName" to displayName, "createdAt" to FieldValue.serverTimestamp()),
+                                                    SetOptions.merge()
+                                                )
+                                            }
+                                            registerCurrentDeviceToken()
+                                            note = ""
+                                        } else {
+                                            note = result.exception?.localizedMessage ?: "Authentication failed. Please try again."
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = MaterialTheme.shapes.large,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF315DEB))
+                    ) {
+                        if (busy) CircularProgressIndicator(Modifier.size(19.dp), color = Color.White, strokeWidth = 2.dp)
+                        else Text(if (register) "Create Account  →" else "Sign In  →", style = MaterialTheme.typography.titleSmall)
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (register) "Already have an account?" else "New to CodeBihin?", color = muted, style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { register = !register; note = ""; confirmPassword = "" }) {
+                            Text(if (register) "Sign in" else "Create account")
+                        }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
-                Text("CodeBihin", style = MaterialTheme.typography.headlineLarge, color = Color.White)
-                Text("Messaging", style = MaterialTheme.typography.titleLarge, color = Color.White.copy(alpha = 0.9f))
-                Spacer(Modifier.height(8.dp))
-                Text("Connect · Chat · Call · Share", style = MaterialTheme.typography.bodySmall, color = Color.White)
             }
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("◆", color = Color(0xFF0F9D78), style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(6.dp))
+                Text("Your account is protected by Firebase Authentication", color = muted, style = MaterialTheme.typography.labelSmall)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("CodeBihin Messaging", color = Color(0xFF94A3B8), style = MaterialTheme.typography.labelSmall)
         }
-        Spacer(Modifier.height(8.dp))
-        Text(if (register) "Create your account" else "Welcome back")
-        Spacer(Modifier.height(22.dp))
-        if (register) {
-            OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(10.dp))
-        }
-        OutlinedTextField(email, { email = it.trim() }, label = { Text("Email") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(password, { password = it }, label = { Text("Password (6+ characters)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = {
-                if (email.isBlank() || password.length < 6 || (register && name.isBlank())) {
-                    note = "Please complete all required fields."
-                } else {
-                    busy = true
-                    val task = if (register) auth.createUserWithEmailAndPassword(email, password)
-                    else auth.signInWithEmailAndPassword(email, password)
-                    task.addOnCompleteListener { result ->
-                        busy = false
-                        if (result.isSuccessful) {
-                            val user = auth.currentUser
-                            if (user != null && register) {
-                                user.updateProfile(com.google.firebase.auth.UserProfileChangeRequest.Builder().setDisplayName(name.trim()).build())
-                                val profile = mapOf(
-                                    "uid" to user.uid,
-                                    "displayName" to name.trim(),
-                                    "email" to (user.email ?: email),
-                                    "createdAt" to FieldValue.serverTimestamp()
-                                )
-                                db.collection("users").document(user.uid).set(profile, SetOptions.merge())
-                                db.collection("publicProfiles").document(user.uid).set(mapOf("uid" to user.uid, "displayName" to name.trim(), "createdAt" to FieldValue.serverTimestamp()), SetOptions.merge())
-                            }
-                            registerCurrentDeviceToken()
-                            note = "Account ready."
-                        } else note = result.exception?.localizedMessage ?: "Authentication failed."
-                    }
+    }
+
+    if (resetDialog) {
+        AlertDialog(
+            onDismissRequest = { resetDialog = false },
+            title = { Text("Reset password") },
+            text = {
+                Column {
+                    Text("Enter your account email. We’ll send you a secure password reset link.")
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = resetEmail, onValueChange = { resetEmail = it },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        label = { Text("Email address") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
                 }
             },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text(if (busy) "Please wait…" else if (register) "Create account" else "Sign in") }
-        TextButton(onClick = { register = !register; note = "" }) {
-            Text(if (register) "Already registered? Sign in" else "Create a new account")
-        }
-        if (note.isNotBlank()) Text(note, color = MaterialTheme.colorScheme.primary)
+            confirmButton = {
+                TextButton(onClick = {
+                    val address = resetEmail.trim()
+                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(address).matches()) {
+                        note = "Enter a valid email address."
+                    } else {
+                        auth.sendPasswordResetEmail(address)
+                            .addOnSuccessListener { note = "Password reset email sent. Check your inbox."; resetDialog = false }
+                            .addOnFailureListener { note = it.localizedMessage ?: "Could not send reset email." }
+                    }
+                }) { Text("Send link") }
+            },
+            dismissButton = { TextButton(onClick = { resetDialog = false }) { Text("Cancel") } }
+        )
     }
 }
 
