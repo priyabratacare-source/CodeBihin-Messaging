@@ -5,7 +5,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="CodeBihin Messaging"
+        android:label="CodeBihin Messaging"\n        android:icon="@drawable/codebihin_launcher"\n        android:roundIcon="@drawable/codebihin_launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
