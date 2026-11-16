@@ -11,6 +11,19 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
 class CodeBihinMessagingService : FirebaseMessagingService() {
+    override fun onCreate() {
+        super.onCreate()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "codebihin_messages",
+                "Messages and updates",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
+        }
+    }
+
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         addDeviceToken(token)
