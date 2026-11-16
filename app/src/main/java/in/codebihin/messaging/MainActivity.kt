@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -63,7 +64,18 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 
-        setContent { MaterialTheme { CodeBihinRoot(::openExternal, ::requestNotificationPermission) } }
+        setContent {
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    primary = Color(0xFF0866E8), onPrimary = Color.White,
+                    primaryContainer = Color(0xFFE4EFFF), onPrimaryContainer = Color(0xFF073B87),
+                    secondary = Color(0xFF2457A6), onSecondary = Color.White,
+                    background = Color(0xFFF5F8FF), surface = Color.White,
+                    onSurface = Color(0xFF14233D), surfaceVariant = Color(0xFFEDF3FC),
+                    onSurfaceVariant = Color(0xFF52627A), outline = Color(0xFFD6E1F0)
+                )
+            ) { CodeBihinRoot(::openExternal, ::requestNotificationPermission) }
+        }
     }
 
     private fun requestNotificationPermission() {
@@ -139,8 +151,24 @@ private fun AuthScreen() {
         Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text("CodeBihin", style = MaterialTheme.typography.headlineLarge)
-        Text("Messaging", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp),
+            color = MaterialTheme.colorScheme.primary,
+            shape = MaterialTheme.shapes.extraLarge
+        ) {
+            Column(Modifier.padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.16f), modifier = Modifier.size(76.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("C", color = Color.White, style = MaterialTheme.typography.headlineLarge)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("CodeBihin", style = MaterialTheme.typography.headlineLarge, color = Color.White)
+                Text("Messaging", style = MaterialTheme.typography.titleLarge, color = Color.White.copy(alpha = 0.9f))
+                Spacer(Modifier.height(8.dp))
+                Text("Connect · Chat · Call · Share", style = MaterialTheme.typography.bodySmall, color = Color.White)
+            }
+        }
         Spacer(Modifier.height(8.dp))
         Text(if (register) "Create your account" else "Welcome back")
         Spacer(Modifier.height(22.dp))
@@ -266,6 +294,12 @@ private fun MessagingScreen(openExternal: (String) -> Unit, requestNotifications
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                ),
                 title = {
                     Column {
                         Text("CodeBihin Messaging")
@@ -481,7 +515,15 @@ private fun ChannelScreen(channel: ChannelItem, onBack: () -> Unit) {
         onDispose { listener.remove() }
     }
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Column { Text(channel.name); Text("Public channel", style = MaterialTheme.typography.labelSmall) } }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } })
+        TopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                titleContentColor = Color.White,
+                navigationIconContentColor = Color.White,
+                actionIconContentColor = Color.White
+            ),
+            title = { Column { Text(channel.name); Text("Public channel", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.82f)) } },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } })
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
         LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(posts, key = { it.id }) { post ->
@@ -578,7 +620,13 @@ private fun ChatScreen(chat: ChatItem, onBack: () -> Unit, openExternal: (String
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Column { Text(chat.title); Text(if (chat.isGroup) "Group chat" else "Private chat", style = MaterialTheme.typography.labelSmall) } },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                titleContentColor = Color.White,
+                navigationIconContentColor = Color.White,
+                actionIconContentColor = Color.White
+            ),
+            title = { Column { Text(chat.title); Text(if (chat.isGroup) "Group chat" else "Private chat", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.82f)) } },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
             actions = {
                 TextButton(onClick = {
